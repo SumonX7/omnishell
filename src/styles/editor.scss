@@ -1,0 +1,63 @@
+@use "constants";
+@use "functions";
+
+.layout-editor {
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
+.layout-editor-slider {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 6px;
+    border: 2px solid rgb(65, 65, 65, 0.8);
+}
+
+.editable-tile-preview-button {
+    text-align: center;
+    font-weight: bold;
+    font-size: 20px;
+    color: white;
+}
+
+.editor-dialog {
+    .layouts-box-layout {
+        spacing: 18px;
+    }
+
+    .layout-button-container {
+        spacing: 8px;
+    }
+
+    .delete-layout-button {
+        padding: constants.$base_padding;
+    }
+
+    // divides layouts into groups by the number of windows they hold
+    .layout-group-separator {
+        width: 2px;
+        background-color: rgba(255, 255, 255, 0.18);
+        margin: 4px 2px;
+    }
+
+    .editor-dialog-title {
+        text-align: center;
+        font-weight: 800;
+        @include functions.fontsize(15pt);
+    }
+
+    .legend {
+        spacing: 12px;
+    }
+
+    .kbd {
+        @include functions.fontsize(constants.$base_font_size);
+        font-weight: bold;
+        text-align: center;
+        font-family: monospace;
+        padding: calc(constants.$base-padding / 3) calc(constants.$base-padding * 2);
+        box-shadow: inset 0px -3px 0px 0px rgba(0, 0, 0, 0.2);
+    }
+}
+
+.hover-line {
+    background-color: rgba(255, 255, 255, 0.2);
+}

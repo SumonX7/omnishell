@@ -1,0 +1,26 @@
+import { registerGObjectClass } from '../../utils/gjs';
+import { Shell } from '../../gi/ext';
+import TilePreview from './tilePreview';
+
+export default class BlurTilePreview extends TilePreview {
+    static { registerGObjectClass(this) }
+    
+    _init() {
+        super._init();
+
+        // changes in GNOME 46+
+        // The sigma in Shell.BlurEffect should be replaced by radius. Since the sigma value
+        // is radius / 2.0, the radius value will be sigma * 2.0.
+        const sigma = 36;
+        this.add_effect(
+            new Shell.BlurEffect({
+                // @ts-expect-error "sigma is available"
+                sigma,
+                // radius: sigma * 2,
+                brightness: 1,
+                mode: Shell.BlurMode.BACKGROUND, // blur what is behind the widget
+            }),
+        );
+        this.add_style_class_name('blur-tile-preview');
+    }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "OmniShell - Tiling & Desktop Fusion",
+  "description": "Unified superpower GNOME extension fusing advanced window tiling with native Desktop Icons NG. Modified & engineered by Sumon Mahmud. Full credit to original authors Domenico Ferraro (Tiling Shell) and Sergio Costas (DING). Smooth, conflict-free, zero telemetry.",
+  "uuid": "omnishell@spark.dev",
+  "shell-version": [
+    "46",
+    "47",
+    "48",
+    "49",
+    "50",
+    "51"
+  ],
+  "version": 100,
+  "version-name": "1.0.0",
+  "url": "https://github.com/SumonX7/omnishell",
+  "settings-schema": "org.gnome.shell.extensions.tilingshell",
+  "gettext-domain": "tilingshell"
+}
