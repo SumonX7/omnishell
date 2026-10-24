@@ -30,7 +30,7 @@ SOURCES := $(shell find $(SRC) -type f \
 	! -name '.gitkeep' \
 	| sort)
 
-.PHONY: all build schemas resources catalogues pot install check clean help
+.PHONY: all build schemas resources catalogues pot install update check clean help
 
 all: build
 
@@ -70,6 +70,13 @@ pot:
 
 install: build
 	@bash install.sh
+	@git checkout -- $(ZIP) 2>/dev/null || true
+
+update:
+	@echo "==> Updating OmniShell to latest version"
+	@git checkout -- $(ZIP) 2>/dev/null || true
+	@git pull --rebase origin main
+	@$(MAKE) install
 
 check:
 	@echo "==> Syntax check"

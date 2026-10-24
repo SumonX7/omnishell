@@ -10,13 +10,19 @@ set -euo pipefail
 
 EXTENSION_UUID="omnishell@spark.dev"
 EXTENSION_DIR="$HOME/.local/share/gnome-shell/extensions/$EXTENSION_UUID"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ZIP_FILE="$SCRIPT_DIR/$EXTENSION_UUID.zip"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || pwd)"
+ZIP_FILE="${ZIP_FILE:-$SCRIPT_DIR/$EXTENSION_UUID.zip}"
 
 info()  { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 ok()    { printf '\033[1;32m  ok\033[0m %s\n' "$*"; }
 warn()  { printf '\033[1;33m  !!\033[0m %s\n' "$*"; }
 fail()  { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
+
+TEMP_ZIP=""
+cleanup() {
+  [ -n "$TEMP_ZIP" ] && rm -f "$TEMP_ZIP" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
 
 # ---------------------------------------------------------------- checks ---
 info "Checking the environment..."
@@ -45,7 +51,24 @@ for typlib in Gtk-4.0 Adw-1; do
 done
 
 if [ ! -f "$ZIP_FILE" ]; then
-  fail "$ZIP_FILE not found. Build the extension first (see README.md)."
+  info "Local archive not found. Fetching latest release archive from GitHub..."
+  TEMP_ZIP="$(mktemp -t "${EXTENSION_UUID}-XXXXXX.zip" 2>/dev/null || mktemp "${TMPDIR:-/tmp}/${EXTENSION_UUID}-XXXXXX.zip")"
+  DOWNLOAD_URL="https://github.com/SumonX7/OmniShell/releases/latest/download/${EXTENSION_UUID}.zip"
+  FALLBACK_URL="https://raw.githubusercontent.com/SumonX7/OmniShell/main/${EXTENSION_UUID}.zip"
+
+  if command -v curl >/dev/null 2>&1; then
+    if ! curl -sSL --fail -o "$TEMP_ZIP" "$DOWNLOAD_URL"; then
+      curl -sSL --fail -o "$TEMP_ZIP" "$FALLBACK_URL" || fail "Failed to download extension archive from GitHub."
+    fi
+  elif command -v wget >/dev/null 2>&1; then
+    if ! wget -qO "$TEMP_ZIP" "$DOWNLOAD_URL"; then
+      wget -qO "$TEMP_ZIP" "$FALLBACK_URL" || fail "Failed to download extension archive from GitHub."
+    fi
+  else
+    fail "Neither 'curl' nor 'wget' was found to download the extension."
+  fi
+  ZIP_FILE="$TEMP_ZIP"
+  ok "downloaded latest release archive"
 fi
 
 # ------------------------------------------------------- validate the zip ---

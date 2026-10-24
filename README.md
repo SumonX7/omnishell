@@ -74,53 +74,43 @@ engineering review.
 
 ## Installation
 
-### Method 1: Using the Automated Installer (Recommended)
+### ⚡ One-Line Automatic Install / Update (Recommended)
 
-1. Download or clone this repository, or download `omnishell@spark.dev.zip` and `install.sh`.
-2. In your terminal, run:
+Run this single command in your terminal to automatically download the latest version, verify dependencies, install, and enable OmniShell:
 
-   ```bash
-   chmod +x install.sh
-   ./install.sh
-   ```
+```bash
+curl -sSL https://raw.githubusercontent.com/SumonX7/OmniShell/main/install.sh | bash
+```
 
-   The installer automatically checks required dependencies (`gjs`, GTK 4, libadwaita), validates zip integrity, disables any conflicting legacy extensions, extracts the files, recompiles the schemas, and enables OmniShell.
+*(Alternatively with wget: `wget -qO- https://raw.githubusercontent.com/SumonX7/OmniShell/main/install.sh | bash`)*
 
-3. **Restart GNOME Shell**:
-   * **Wayland session:** Log out and log back in.
-   * **X11 session:** Press <kbd>Alt</kbd>+<kbd>F2</kbd>, type `r`, and press <kbd>Enter</kbd>.
-
-4. Verify OmniShell is running:
-
-   ```bash
-   gnome-extensions info omnishell@spark.dev
-   ```
+After installation, **Log out and log back in** (on Wayland) to load the new version into GNOME Shell.
 
 ---
 
-### Method 2: Direct GNOME Extensions CLI
+### Method 2: Build & Install From Source
 
-If you already have `omnishell@spark.dev.zip`:
+```bash
+# First time install:
+git clone https://github.com/SumonX7/OmniShell.git
+cd OmniShell
+make install
+
+# Update existing repository to the latest release:
+cd OmniShell
+make update
+```
+
+---
+
+### Method 3: Direct GNOME Extensions CLI
+
+If you downloaded `omnishell@spark.dev.zip`:
 
 ```bash
 gnome-extensions install --force omnishell@spark.dev.zip
 gnome-extensions enable omnishell@spark.dev
 ```
-Then log out and log back in (Wayland) or reload GNOME Shell (X11).
-
----
-
-### Method 3: Build & Install From Source
-
-```bash
-git clone https://github.com/SumonX7/OmniShell.git
-cd OmniShell
-make install
-```
-
-The build needs `make`, `zip`, and the GLib tools (`glib-compile-schemas`,
-`glib-compile-resources`). Building the translations additionally needs
-`gettext` (`xgettext`, `msgmerge`, `msgfmt`).
 
 ---
 
