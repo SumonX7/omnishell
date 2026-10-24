@@ -5,6 +5,15 @@ All notable changes to OmniShell are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-10-24
+
+### Fixed
+* **Automatic Side-by-Side Tiling for Newly Opened Windows**:
+  * Fixed an issue where opening a 2nd or 3rd browser/app that remembered its maximized state from a previous session opened full screen over existing windows instead of automatically tiling side-by-side.
+  * Added `omnishellUserMaximized` state tracking: newly created windows and workspace additions reset the intentional maximize state, ensuring all newly opened apps immediately auto-tile into side-by-side slots without requiring manual unmaximize.
+  * Fullscreen is reserved exclusively for explicit user actions: clicking the Maximize button (or titlebar/tab bar double-click, or `<Super>Up`) maximizes ONLY that specific app to 100% full screen.
+  * Clicking Unmaximize/Restore (or titlebar/tab bar double-click, or `<Super>Down`) smoothly returns the window back to its dynamic tile slot alongside other open apps.
+
 ## [1.0.2] - 2026-10-24
 
 ### Fixed

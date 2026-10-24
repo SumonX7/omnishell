@@ -37,6 +37,7 @@ function adaptWindow(window, easeMode) {
       (window.maximizedHorizontally && window.maximizedVertically) ||
       (window.maximized_horizontally && window.maximized_vertically)
     ),
+    isUserMaximized: () => Boolean(window.omnishellUserMaximized),
     getFrameRect: () => plainRect(window.get_frame_rect()),
     getBufferRect: () => plainRect(window.get_buffer_rect()),
     moveToMonitor: (index) => window.move_to_monitor(index),
