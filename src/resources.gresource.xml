@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The compiled resources.gresource is built from this file with:
+
+      glib-compile-resources --sourcedir=src --target=src/resources.gresource \
+          src/resources.gresource.xml
+
+  The prefix used to be "/org/gnome/Shell/Extensions/tilingshell", which
+  belongs to the upstream Tiling Shell extension. Two extensions registering
+  resources under the same prefix fight over the resource path, so the
+  prefix is now owned by this project: "/com/spark/omnishell".
+-->
+<gresources>
+  <gresource prefix="/com/spark/omnishell">
+    <file>icons/scalable/actions/edge-adaptive-symbolic.svg</file>
+    <file>icons/scalable/actions/edge-adaptive-symbolic-dark.svg</file>
+    <file>icons/scalable/actions/edge-default-symbolic.svg</file>
+    <file>icons/scalable/actions/edge-default-symbolic-dark.svg</file>
+    <file>icons/scalable/actions/edge-granular-symbolic.svg</file>
+    <file>icons/scalable/actions/edge-granular-symbolic-dark.svg</file>
+  </gresource>
+</gresources>

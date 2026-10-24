@@ -1,153 +1,243 @@
-# 🚀 OmniShell — Tiling & Desktop Fusion for GNOME
+# OmniShell — Tiling & Desktop Fusion for GNOME Shell
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/SumonX7/omnishell/main/resources/icons/scalable/actions/omnishell-symbolic.svg" width="128" height="128" alt="OmniShell Logo" />
-</p>
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![Zero Telemetry](https://img.shields.io/badge/Telemetry-Zero%20%2F%20100%25%20Private-brightgreen.svg)](#privacy)
+[![GNOME Shell](https://img.shields.io/badge/GNOME%20Shell-46%20--%2051%2B-orange.svg)](#)
+[![Open Source](https://img.shields.io/badge/Open%20Source-%E2%99%A5-red.svg)](https://github.com/SumonX7/OmniShell)
 
-<p align="center">
-  <b>The Unified Superpower Desktop Environment for GNOME 46 – 51+</b><br>
-  <i>Seamlessly combining modern window tiling management with native, high-performance desktop icons.</i>
-</p>
+A unified superpower GNOME Shell extension that seamlessly fuses **advanced automatic window tiling** with the native **Desktop Icons NG** engine. Terminals, browsers, and applications automatically tile side-by-side with customizable margins — while the desktop displays smooth, fully-featured desktop icons.
 
-<p align="center">
-  <a href="https://github.com/SumonX7/omnishell/releases"><img src="https://img.shields.io/github/v/release/SumonX7/omnishell?style=flat-square&color=blue" alt="Latest Release"></a>
-  <a href="https://github.com/SumonX7/omnishell/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-GPL%20v3.0-green.svg?style=flat-square" alt="License: GPL v3.0"></a>
-  <img src="https://img.shields.io/badge/GNOME-46%20--%2051+-purple?style=flat-square" alt="GNOME Shell Support">
-  <img src="https://img.shields.io/badge/Platform-openSUSE%20%7C%20Fedora%20%7C%20Arch%20%7C%20Ubuntu-orange?style=flat-square" alt="Linux Distributions">
-  <img src="https://img.shields.io/badge/Wayland-Native-success?style=flat-square" alt="Wayland Native">
-  <img src="https://img.shields.io/badge/Telemetry-Zero%20%2F%20100%25%20Private-brightgreen?style=flat-square" alt="Zero Telemetry">
-</p>
+* **UUID:** `omnishell@spark.dev`
+* **GNOME Shell:** 46, 47, 48, 49, 50, 51+
+* **License:** GNU GPL-3.0-only (see [`LICENSE`](LICENSE))
+* **Privacy:** 🛡️ 100% Free & Open Source, Zero Telemetry, No Tracking, Fully Offline.
+* **Modified & Fusion Engineered by:** **Sumon Mahmud**
 
----
+OmniShell is built upon two legendary upstream GNOME Shell extensions, maintaining full credit to their original authors:
 
-## 🌟 Overview
+| Upstream project | Author | What was taken |
+| --- | --- | --- |
+| [Tiling Shell](https://extensions.gnome.org/extension/3732/) | Domenico Ferraro | Tiling engine, layouts, snap assist, indicator and preferences |
+| [DING](https://extensions.gnome.org/extension/560/) | Sergio Costas | Desktop-icons application, icon grid and D-Bus integration |
 
-**OmniShell** is an all-in-one superpower GNOME Shell extension created by fusing two of the most popular and essential GNOME utilities into a single, cohesive, conflict-free system:
-
-1. **[Tiling Shell](https://github.com/J4KE-B/tilingshell)** — Advanced window tiling, snap assistance, dynamic auto-tiling, and customizable multi-monitor grid layouts.
-2. **[Desktop Icons NG (DING)](https://gitlab.com/rastersoft/desktop-icons-ng)** — Modern GTK4 desktop canvas with full file management, drag-and-drop, and emblem support.
-
-### ✨ Why OmniShell?
-Running separate tiling and desktop icon extensions often creates subtle conflicts on modern Wayland sessions:
-- Desktop canvas windows accidentally get tiled or focused as regular app windows.
-- Tiling snap margins overlap with desktop icon columns.
-- Launching folders from the desktop opens them in constrained floating bounds (~80% size) instead of full view.
-- Heavy dual DBus background daemons waste memory.
-
-**OmniShell solves all of this.** It unifies both subsystems into a single lifecycle, eliminates DBus race conditions, introduces safe-zone synchronization, and provides a unified, beautiful Libadwaita preferences dashboard.
+OmniShell is a *combined* work: the two code bases are merged, the D-Bus
+names and GSettings schema IDs are project-owned (so a separately installed
+upstream extension is never displaced), and a number of correctness and
+packaging bugs were fixed. See [`REVIEW.md`](REVIEW.md) for the full
+engineering review.
 
 ---
 
-## ⚡ Superpower Features
+## Features
 
-### 🪟 Advanced Tiling System
-* **Dynamic Auto-Tiling:** Windows automatically partition available screen space as you open or close them, honoring your customized grid layout.
-* **Snap Assistant:** Windows dragged to the top or edges present an interactive snap preview for instant multi-window arrangement.
-* **Smart Edge Snapping:** Drag windows to display borders with customizable gaps (inner & outer margins).
-* **Multi-Monitor Perfection:** Independent layout configurations and workarea calculation per monitor.
-* **Custom Layout Editor:** Visual in-app grid editor to craft any custom window layout with pixel precision.
+### Tiling
 
-### 🖥️ Native Desktop Icons (GTK4 Engine)
-* **Direct Desktop Icon Resizing:** Instant choice between **Tiny (36px)**, **Small (48px)**, **Standard (64px)**, and **Large (96px)**.
-* **Custom Label Font Sizes:** Change desktop icon text label size (**Small 9pt**, **Standard 11pt**, **Medium 13pt**, **Large 15pt**, **Extra Large 18pt**).
-* **Desktop Shortcuts:** One-click toggles for Personal (Home) folder, Trash bin, and Connected External Drives / USB storage.
-* **Full Drag-and-Drop:** Seamless file dragging into applications, folders, or between monitors.
+* **Static tiling** — a set of predefined layouts, cycled with a keyboard
+  shortcut. Each layout is a tree of splits that can be edited
+  interactively in the layout editor.
+* **Dynamic tiling** — windows are placed automatically into a growing
+  tree as they open. The tree splits the free space in half at every
+  insertion, so a new terminal always lands in a sensible slot.
+* **Auto-tiling** — the dynamic layout is applied automatically to
+  newly opened windows. This is the feature that "just works" for
+  terminals and file managers.
+* **Move and resize** — dedicated keybindings for moving, resizing and
+  swapping windows, plus edge tiling by dragging a window against a
+  screen edge.
+* **Snap assistant** — an overlay that shows the layout choices while a
+  window is being dragged, with a live preview of the resulting tile.
+* **Span multiple tiles** — a window can be told to occupy more than one
+  tile of the layout.
+* **Window suggestions** — the layouts can be offered as suggestions in
+  the screen-edge, window-menu and snap-assistant contexts.
 
-### 🔗 Deep Fusion & Harmony (Exclusive to OmniShell)
-* **⚡ Desktop Folder Auto-Maximize:** Double-clicking folders or files on the desktop instantly opens Nautilus (or your default file manager) in clean **100% maximized full screen**, bypassing Mutter's default 80% floating constrain.
-* **🛡️ Desktop Canvas Filtering:** Mutter never mistakes the GTK4 desktop canvas for a tilable window.
-* **📐 Dynamic Safe-Zone Synchronization:** Desktop icon grid boundaries automatically adapt when you adjust tiling outer gaps and screen margins.
-* **🔒 100% Private & Local:** Zero telemetry, zero external network requests, rock-solid security.
+### Desktop icons
+
+* Real desktop icons rendered on the background, with drag-and-drop,
+  cut/copy/paste, renaming, and a context menu.
+* The icon grid is integrated with the tiling engine, so the desktop
+  reacts correctly when the screen layout changes.
+
+### Everything else
+
+* **Indicator menu** in the top bar for switching layouts and toggling
+  features.
+* **Per-application opt-out** — any application can be excluded from
+  tiling (`tiling-excluded-apps`).
+* **Configurable gaps, animation and border radius.**
+* **Settings export/import** so a configuration can be moved between
+  machines.
+* **14 translations** (cs, de, es, fr, it, ka, nl, pl, pt_BR, ru, tr, uk,
+  zh_CN, zh_TW).
 
 ---
 
-## 📜 Credits & Attributions
+## Installation
 
-OmniShell stands on the shoulders of giants. We provide full, deep, and sincere credit to the original creators and maintainers whose pioneering work made this possible:
+### From a release ZIP
 
-| Component | Project | Original Creator & Maintainer | Upstream Repository |
-| :--- | :--- | :--- | :--- |
-| 🪟 **Tiling Engine** | **Tiling Shell** | **Domenico Ferraro** (`@domferr`) | [github.com/J4KE-B/tilingshell](https://github.com/J4KE-B/tilingshell) |
-| 🖥️ **Desktop Engine** | **Desktop Icons NG (DING)** | **Sergio Costas** (`@rastersoft`) | [gitlab.com/rastersoft/desktop-icons-ng](https://gitlab.com/rastersoft/desktop-icons-ng) |
+1. Download `omnishell@spark.dev.zip`.
+2. Run the installer from the same directory:
 
-### 🛠️ Fusion Engineering & Optimization
-* **Modified & Fusion Engineered by:** **Sumon Mahmud** ([@SumonX7](https://github.com/SumonX7))
-* **Target Environment & QA:** openSUSE Tumbleweed, GNOME Shell 50.5+ (Wayland)
+   ```bash
+   ./install.sh
+   ```
 
----
+   The installer validates the archive, checks that `gjs`, GTK 4 and
+   libadwaita are present, compiles the GSettings schemas, and installs
+   the extension into `~/.local/share/gnome-shell/extensions/`.
 
-## 🚀 Installation
+3. **Wayland:** log out and log back in (the shell cannot be reloaded in
+   place).
+   **X11:** press <kbd>Alt</kbd>+<kbd>F2</kbd>, type `r`, press
+   <kbd>Enter</kbd>.
+4. Confirm it is running:
 
-### Option 1: One-Line Automatic Install (Recommended)
-Download the latest pre-built release package from [Releases](https://github.com/SumonX7/omnishell/releases):
+   ```bash
+   gnome-extensions info omnishell@spark.dev
+   ```
+
+### From source
 
 ```bash
-# Clone the repository
 git clone https://github.com/SumonX7/omnishell.git
 cd omnishell
-
-# Build and package
-npm install
-npm run build:package
-
-# Install extension & compile schemas
-mkdir -p ~/.local/share/gnome-shell/extensions/omnishell@spark.dev
-unzip -o omnishell@spark.dev.zip -d ~/.local/share/gnome-shell/extensions/omnishell@spark.dev
-mkdir -p ~/.local/share/glib-2.0/schemas
-cp resources/schemas/* ~/.local/share/glib-2.0/schemas/
-glib-compile-schemas ~/.local/share/glib-2.0/schemas/
+make            # builds omnishell@spark.dev.zip
+make install    # builds and installs
 ```
 
-### Option 2: Using the Release Zip
-1. Download `omnishell@spark.dev.zip` from [Releases](https://github.com/SumonX7/omnishell/releases).
-2. Extract to `~/.local/share/gnome-shell/extensions/omnishell@spark.dev/`.
-3. Compile schemas:
-   ```bash
-   glib-compile-schemas ~/.local/share/gnome-shell/extensions/omnishell@spark.dev/schemas/
-   ```
-4. On Wayland, log out and log back in, then enable:
-   ```bash
-   gnome-extensions enable omnishell@spark.dev
-   ```
+The build needs `make`, `zip`, and the GLib tools (`glib-compile-schemas`,
+`glib-compile-resources`). Building the translations additionally needs
+`gettext` (`xgettext`, `msgmerge`, `msgfmt`).
 
 ---
 
-## ⌨️ Default Keyboard Shortcuts
+## Development
 
-| Shortcut | Description |
-| :--- | :--- |
-| <kbd>Super</kbd> + <kbd>Arrow Keys</kbd> | Move / swap window to adjacent tile |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>;</kbd> | Cycle through layouts matching current window count |
-| <kbd>Super</kbd> + Drag | Move window with interactive Snap Assist / Tiling Guide |
-| <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> | Toggle OmniShell Layout Selector |
+### Layout of the tree
 
-*(All keyboard shortcuts can be completely customized inside Preferences)*
+```
+src/
+  extension.js        the ExtensionBase subclass; enable()/disable()
+  prefs.js            the ExtensionPreferences subclass
+  translations.js     shell-side gettext helpers
+  prefsTranslations.js preferences-side gettext helpers
+  dbus.js             the extension's own D-Bus service
+  keybindings.js      the keyboard shortcut model
+  monitorDescription.js
+  settings/           GSettings access, export/import, overrides
+  components/         the tiling engine and the UI
+    layout/           layout trees, tiles, pins, reflow
+    tilingsystem/     the tiling manager and window placer
+    snapassist/       the snap-assist overlay
+    tilepreview/      the tile preview actors
+    windowsSuggestions/
+    editor/           the interactive layout editor
+    ...
+  app/                the desktop-icons (DING) application
+  dingBridge/         the bridge between the shell and the DING app
+  schemas/            the GSettings schemas
+  locale/             the compiled gettext catalogues
+po/                   the gettext template and the catalogue sources
+```
 
----
-
-## 🛠️ Building from Source
-
-### Requirements
-* Node.js 18+ and `npm`
-* `glib2` development tools (`glib-compile-schemas`, `glib-compile-resources`)
-* `zip`
+### Common tasks
 
 ```bash
-# Install dependencies
-npm install
-
-# Run unit test suite (99 passing tests)
-npm run test
-
-# Compile TypeScript and SCSS resources
-npm run build
-
-# Generate distributable extension zip
-npm run build:package
+make check         # run the verification harnesses
+make pot           # regenerate the .pot template and merge it
+make catalogues    # recompile the .mo files from po/*.po
+make clean         # remove the build artefacts
 ```
+
+The harnesses are plain Node scripts with no dependencies, so they can also be run
+individually:
+
+```bash
+node check_syntax.mjs              # syntax check every source file
+node verify_fixes.mjs              # the fix checks
+node verify_round2.mjs             # the SortOrder round-trip checks
+node verify_perf.mjs               # the dynamic-layout cache checks
+node verify_claims.mjs             # re-tests every original audit claim
+```
+
+All of them also run automatically in CI on every push and pull request —
+see [`.github/workflows/ci.yml`](.github/workflows/ci.yml). The workflow also
+builds the ZIP, validates the archive layout and uploads it as an artefact.
+
+### Translating
+
+1. Copy `po/tilingshell.pot` to `po/<your-locale>.po`.
+2. Translate the `msgstr` entries.
+3. Run `make catalogues` to compile them.
+4. Open a pull request.
+
+The `po/` directory holds the authoritative translation sources; the
+compiled `src/locale/<lang>/LC_MESSAGES/tilingshell.mo` files are build
+products.
 
 ---
 
-## 📄 License
+## Troubleshooting
 
-OmniShell is open-source software licensed under the **GNU General Public License v3.0 (GPL-3.0)**, preserving and respecting the original licenses of both Tiling Shell and Desktop Icons NG.
+**The extension does not appear.**
+Make sure the schemas were compiled:
+
+```bash
+glib-compile-schemas --strict ~/.local/share/gnome-shell/extensions/omnishell@spark.dev/schemas
+```
+
+**Auto-tiling does not happen for a new terminal.**
+Check that *Enable auto tiling* and *Enable dynamic tiling* are both on in
+the preferences, and that the application is not in the excluded list.
+Also check for a conflicting extension — `tilingshell@ferrarodomenico.com`
+and `ding@rastersoft.com` must be disabled.
+
+If the journal shows
+
+```
+Settings schema 'org.gnome.shell.extensions.tilingshell' does not contain a key named 'enable-dynamic-tiling'
+```
+
+then a **stale copy** of the schema in `~/.local/share/glib-2.0/schemas/` is
+shadowing the one that ships with the extension — GSettings searches the user
+directory first. Re-run `make install`; the installer detects the stale copy,
+replaces it and recompiles the directory.
+
+```bash
+# Check for yourself
+gjs -c "imports.gi.versions.Gio='2.0'; \
+  const s = new imports.gi.Gio.Settings({schema_id:'org.gnome.shell.extensions.tilingshell'}); \
+  print(s.get_boolean('enable-dynamic-tiling'));"
+```
+
+**The extension does not load.**
+Read the log:
+
+```bash
+journalctl --user -f | grep -i omnishell
+```
+
+**The icons are missing from the desktop.**
+The desktop-icons feature needs `gjs` plus the GTK 4 and libadwaita
+typelibs. The installer checks for them and warns if they are missing.
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome at
+<https://github.com/SumonX7/omnishell>.
+
+Please read [`REVIEW.md`](REVIEW.md) first — it documents the architecture,
+the bugs that were found and fixed, and the areas that are still known to
+need work.
+
+## Credits
+
+* **Domenico Ferraro** — Tiling Shell
+* **Sergio Costas** — DING (Desktop Icons NG)
+* **Sumon Mahmud** — OmniShell
+
+Licensed under the GNU General Public License v3.0 only. The full text is
+in [`LICENSE`](LICENSE).

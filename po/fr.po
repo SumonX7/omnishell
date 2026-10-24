@@ -1,0 +1,1731 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Tiling Shell\n"
+"Report-Msgid-Bugs-To: https://github.com/spark44/omnishell/issues\n"
+"POT-Creation-Date: 2026-10-24 11:36+0600\n"
+"PO-Revision-Date: 2025-03-23 14:33+0100\n"
+"Last-Translator: Nicolas Bénard <nico5b@msn.com>\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"X-Generator: Gtranslator 47.1\n"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/window_menu/overriddenWindowMenu.js⁩:117
+#, fuzzy
+msgid "Move to best tile"
+msgstr "Déplacer vers la tuile la plus à gauche"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/window_menu/overriddenWindowMenu.js⁩:137
+msgid "Move to leftmost tile"
+msgstr "Déplacer vers la tuile la plus à gauche"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/window_menu/overriddenWindowMenu.js⁩:156
+msgid "Move to rightmost tile"
+msgstr "Déplacer vers la tuile la plus à droite"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/altTab/MultipleWindowsIcon.js⁩:42
+#, fuzzy
+msgid "Tiled windows"
+msgstr "Détacher la fenêtre active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/editor/editorDialog.js⁩:36
+msgid "Select the layout to edit"
+msgstr "Sélectionner la disposition à modifier"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/editor/editorDialog.js⁩:54
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/notifyX11UnderWayland.js⁩:36
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/showErrorPopup.js⁩:37
+msgid "Close"
+msgstr "Fermer"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/editor/editorDialog.js⁩:81
+msgid "to split a tile"
+msgstr "pour diviser une tuile"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/editor/editorDialog.js⁩:120
+msgid "to split a tile vertically"
+msgstr "pour diviser une tuile verticalement"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/editor/editorDialog.js⁩:140
+msgid "to delete a tile"
+msgstr "pour supprimer une tuile"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/editor/editorDialog.js⁩:164
+msgid "use the indicator button to save or cancel"
+msgstr "utilisez le bouton d'indicateur pour enregistrer ou annuler"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/editor/editorDialog.js⁩:182
+msgid "How to use the editor"
+msgstr "Comment utiliser l'éditeur"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/components/editor/editorDialog.js⁩:191
+msgid "Start editing"
+msgstr "Commencer à modifier"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/indicator/defaultMenu.js⁩:149
+msgid "Dynamic tiling"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/indicator/defaultMenu.js⁩:337
+msgid "Edit Layouts"
+msgstr "Modifier les dispositions"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/indicator/defaultMenu.js⁩:347
+msgid "New Layout"
+msgstr "Nouvelle disposition"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/indicator/defaultMenu.js⁩:373
+msgid "Desktop Icons"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/indicator/editingMenu.js⁩:19
+msgid "Menu"
+msgstr "Menu"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/indicator/editingMenu.js⁩:26
+msgid "Info"
+msgstr "Info"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/indicator/editingMenu.js⁩:33
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:578
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:988
+msgid "Save"
+msgstr "Enregistrer"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/indicator/editingMenu.js⁩:43
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:579
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:633
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:989
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1044
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:296
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:559
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopManager.js⁩:1006
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:564
+msgid "Cancel"
+msgstr "Annuler"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:60
+msgid "General"
+msgstr "Général"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:65
+msgid "Appearance"
+msgstr "Apparence"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:66
+msgid "Configure the appearance of Tiling Shell"
+msgstr "Configurer l'apparence de Tiling Shell"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:71
+msgid "Show Indicator"
+msgstr "Afficher l'indicateur"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:72
+msgid "Whether to show the panel indicator"
+msgstr "Afficher ou non l'indicateur dans le panneau"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:77
+msgid "Inner gaps"
+msgstr "Espaces internes"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:78
+msgid "Gaps between windows"
+msgstr "Espaces entre les fenêtres"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:83
+msgid "Outer gaps"
+msgstr "Espaces externes"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:84
+msgid "Gaps between a window and the monitor borders"
+msgstr "Espaces entre une fenêtre et les bords de l'écran"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:88
+msgid "Blur (experimental feature)"
+msgstr "Flou (fonctionnalité expérimentale)"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:90
+msgid "Apply blur effect to Snap Assistant and tile previews"
+msgstr ""
+"Appliquer un effet de flou à l'assistant d'ancrage et aux aperçus des tuiles"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:96
+msgid "Snap Assistant threshold"
+msgstr "Seuil de l'assistant d'ancrage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:98
+msgid "Minimum distance from the Snap Assistant to the pointer to open it"
+msgstr ""
+"Distance minimale entre l'assistant d'ancrage et le pointeur pour l'ouvrir"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:107
+msgid "Snap Assistant"
+msgstr "Assistant d'ancrage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:108
+msgid "Apply blur effect to Snap Assistant"
+msgstr "Appliquer un effet de flou à l'assistant d'ancrage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:114
+msgid "Selected tile preview"
+msgstr "Aperçu de la tuile sélectionnée"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:115
+msgid "Apply blur effect to selected tile preview"
+msgstr "Appliquer un effet de flou à l'aperçu de la tuile sélectionnée"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:119
+msgid "Window border"
+msgstr "Bordure de fenêtre"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:120
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:127
+msgid "Show a border around focused window"
+msgstr "Afficher une bordure autour de la fenêtre active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:126
+msgid "Enable"
+msgstr "Activer"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:133
+msgid "Smart border radius"
+msgstr "Rayon de bordure intelligent"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:134
+msgid "Dynamically adapt to the window's actual border radius"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:140
+msgid "Width"
+msgstr "Largeur"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:141
+msgid "The size of the border"
+msgstr "Taille de la bordure"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:150
+msgid "Border color"
+msgstr "Couleur de la bordure"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:151
+msgid "Choose the color of the border"
+msgstr "Choisir la couleur de la bordure"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:193
+msgid "Animations"
+msgstr "Animations"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:194
+msgid "Customize animations"
+msgstr "Personnaliser les animations"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:200
+msgid "Snap assistant animation time"
+msgstr "Durée de l'animation de l'assistant d'ancrage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:201
+msgid "The snap assistant animation time in milliseconds"
+msgstr "Durée de l'animation de l'assistant d'ancrage en millisecondes"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:209
+msgid "Tiles animation time"
+msgstr "Durée de l'animation des tuiles"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:210
+msgid "The tiles animation time in milliseconds"
+msgstr "Durée de l'animation des tuiles en millisecondes"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:216
+msgid "Desktop Icons (Fusion Engine)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:217
+msgid ""
+"Configure the integrated Desktop Icons NG engine, icon sizing, and safe zones"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:222
+msgid "Enable Desktop Icons"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:223
+msgid "Show native desktop icons powered by Desktop Icons NG"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:228
+msgid "Auto-Maximize Folders Opened from Desktop"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:229
+msgid "Automatically open folders and files in 100% full screen maximized mode"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:250
+msgid "Tiny (36px)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:251
+msgid "Small (48px)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:252
+msgid "Standard (64px)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:253
+msgid "Large (96px)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:255
+msgid "Desktop Icon Size"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:256
+msgid "Set the size for icons displayed on the desktop canvas"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:284
+msgid "Small (9 pt)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:285
+msgid "Standard (11 pt)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:286
+msgid "Medium (13 pt)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:287
+msgid "Large (15 pt)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:288
+msgid "Extra Large (18 pt)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:290
+msgid "Desktop Icon Text Size"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:291
+msgid "Adjust font size of desktop icon text labels"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:310
+msgid "Show Personal (Home) Folder"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:311
+msgid "Display a shortcut to your home directory on the desktop"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:316
+msgid "Show Trash Icon"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:317
+msgid "Display the recycle bin icon on the desktop"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:322
+msgid "Show External Drives"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:323
+msgid "Display connected USB flash drives and external disks on the desktop"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:330
+msgid "Dynamic Safe Zones and Gap Harmonization"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:331
+msgid ""
+"Automatically harmonize desktop icon placement with tiling gaps and screen "
+"edges"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:335
+msgid "Advanced Desktop Icon Preferences"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:336
+msgid ""
+"Open full DING settings popup for arrangement order and script templates"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:339
+msgid "Open Full Settings"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:362
+msgid "Behaviour"
+msgstr "Comportement"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:363
+msgid "Configure the behaviour of Tiling Shell"
+msgstr "Configurer le comportement de Tiling Shell"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:368
+msgid "Enable Snap Assistant"
+msgstr "Activer l'assistant d'ancrage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:369
+msgid "Move the window on top of the screen to snap assist it"
+msgstr ""
+"Déplacer la fenêtre en haut de l'écran pour activer l'assistant d'ancrage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:374
+#, fuzzy
+msgid "Sync layout when tiling with Snap Assistant"
+msgstr "Appliquer un effet de flou à l'assistant d'ancrage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:376
+msgid ""
+"Change the active layout to match the layout used when tiling a window with "
+"Snap Assistant"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:387
+msgid "Enable Tiling System"
+msgstr "Activer le système de tuiles"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:388
+msgid "Hold the activation key while moving a window to tile it"
+msgstr ""
+"Maintenir la touche d'activation en déplaçant une fenêtre pour l'ancrer"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:396
+msgid "Tiling System deactivation key"
+msgstr "Touche de désactivation du système de tuilage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:398
+msgid ""
+"Hold the deactivation key while moving a window to deactivate the tiling "
+"system"
+msgstr ""
+"Maintenez la touche de désactivation tout en déplaçant une fenêtre pour "
+"désactiver le système de tuilage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:406
+msgid "Span multiple tiles"
+msgstr "Étendre sur plusieurs tuiles"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:407
+msgid "Hold the activation key to span multiple tiles"
+msgstr "Maintenir la touche d'activation pour étendre sur plusieurs tuiles"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:416
+msgid "Enable Auto Tiling"
+msgstr "Activer le tuilage automatique"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:417
+msgid "Automatically tile new windows to the best tile"
+msgstr "Carrelez automatiquement les nouvelles fenêtres sur la meilleure tuile"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:424
+msgid "Enable auto-resize of the complementing tiled windows"
+msgstr "Activer le redimensionnement automatique des fenêtres adjacentes"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:426
+msgid ""
+"When a tiled window is resized, auto-resize the other tiled windows near it"
+msgstr ""
+"Lorsque qu'une fenêtre ancrée est redimensionnée, ajuster automatiquement "
+"les autres fenêtres adjacentes"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:432
+msgid "Restore window size"
+msgstr "Restaurer la taille de la fenêtre"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:434
+msgid "Whether to restore the windows to their original size when untiled"
+msgstr ""
+"Restaurer ou non la taille d'origine des fenêtres lorsqu'elles sont "
+"désancrées"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:440
+msgid "Add snap assistant and auto-tile buttons to window menu"
+msgstr ""
+"Ajouter des boutons pour l'assistant d'ancrage et l'ancrage automatique au "
+"menu de la fenêtre"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:442
+msgid ""
+"Add snap assistant and auto-tile buttons in the menu that shows up when you "
+"right click on a window title"
+msgstr ""
+"Ajouter des boutons pour l'assistant d'ancrage et l'ancrage automatique dans "
+"le menu contextuel du titre de la fenêtre"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:448
+msgid "Add tiled windows to ALT+TAB menu"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:450
+msgid ""
+"Add the tiled windows to the ALT+TAB menu to open all the tiled windows at "
+"once"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:456
+msgid "Raise tiled windows together"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:458
+#, fuzzy
+msgid ""
+"When one tiled window is raised, raise all tiled windows into the foreground "
+"together"
+msgstr ""
+"Lorsque qu'une fenêtre ancrée est redimensionnée, ajuster automatiquement "
+"les autres fenêtres adjacentes"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:463
+msgid "Screen Edges"
+msgstr "Bords de l'écran"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:465
+msgid ""
+"Drag windows against the top, left and right screen edges to resize them"
+msgstr ""
+"Faites glisser les fenêtres contre les bords supérieur, gauche et droit de "
+"l'écran pour les redimensionner"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:479
+msgid "Drag against top edge to maximize window"
+msgstr "Faites glisser contre le bord supérieur pour maximiser la fenêtre"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:480
+msgid "Drag windows against the top edge to maximize them"
+msgstr ""
+"Faites glisser les fenêtres contre le bord supérieur pour les maximiser"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:489
+msgid "Quarter tiling activation area"
+msgstr "Zone d'activation du quadrillage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:490
+#, javascript-format
+msgid "Activation area to trigger quarter tiling (%% of the screen)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:506
+msgid "Edge tiling offset"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:507
+msgid "Offset from the screen edge to trigger edge tiling (in pixels)"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:529
+msgid "Windows suggestions"
+msgstr "Suggestions de fenêtres"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:530
+msgid "Enable and disable windows suggestions"
+msgstr "Activer et désactiver les suggestions de fenêtres"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:534
+msgid "Enable window suggestions for the tiling system"
+msgstr "Activer les suggestions de fenêtres pour le système de tuilage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:536
+msgid ""
+"Provides smart suggestions to fill empty tiles when using the tiling system"
+msgstr ""
+"Fournit des suggestions intelligentes pour remplir les tuiles vides lors de "
+"l'utilisation du système de tuilage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:542
+msgid "Enable window suggestions for the snap assistant"
+msgstr "Activer les suggestions de fenêtres pour l'assistant de fixation"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:544
+msgid ""
+"Offers suggestions to populate empty tiles when using the snap assistant"
+msgstr ""
+"Propose des suggestions pour remplir les tuiles vides lors de l'utilisation "
+"de l'assistant de fixation"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:550
+#, fuzzy
+msgid "Enable window suggestions for screen edge tiling"
+msgstr "Activer les suggestions de fenêtres pour le système de tuilage"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:552
+#, fuzzy
+msgid "Suggests windows to occupy empty tiles when tiling to screen edges"
+msgstr ""
+"Propose des suggestions pour remplir les tuiles vides lors de l'utilisation "
+"de l'assistant de fixation"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:558
+msgid "Layouts"
+msgstr "Dispositions"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:559
+msgid "Configure the layouts of Tiling Shell"
+msgstr "Configurer les dispositions de Tiling Shell"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:563
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:564
+msgid "Edit layouts"
+msgstr "Modifier les dispositions"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:565
+msgid "Open the layouts editor"
+msgstr "Ouvrir l'éditeur de dispositions"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:570
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:571
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:575
+msgid "Export layouts"
+msgstr "Exporter les dispositions"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:572
+msgid "Export layouts to a file"
+msgstr "Exporter les dispositions dans un fichier"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:624
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:625
+msgid "Import layouts"
+msgstr "Importer des dispositions"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:626
+msgid "Import layouts from a file"
+msgstr "Importer des dispositions depuis un fichier"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:629
+msgid "Select layouts file"
+msgstr "Sélectionner un fichier de dispositions"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:632
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1043
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:232
+msgid "Open"
+msgstr "Ouvrir"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:680
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:681
+msgid "Reset layouts"
+msgstr "Réinitialiser les dispositions"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:682
+msgid "Bring back the default layouts"
+msgstr "Restaurer les dispositions par défaut"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:695
+msgid "Keybindings"
+msgstr "Raccourcis clavier"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:697
+msgid "Use hotkeys to perform actions on the focused window"
+msgstr ""
+"Utiliser des raccourcis pour effectuer des actions sur la fenêtre active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:715
+msgid "Move window to right tile"
+msgstr "Déplacer la fenêtre vers la tuile de droite"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:717
+msgid "Move the focused window to the tile on its right"
+msgstr "Déplacer la fenêtre active vers la tuile à sa droite"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:726
+msgid "Move window to left tile"
+msgstr "Déplacer la fenêtre vers la tuile de gauche"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:727
+msgid "Move the focused window to the tile on its left"
+msgstr "Déplacer la fenêtre active vers la tuile à sa gauche"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:733
+msgid "Move window to tile above"
+msgstr "Déplacer la fenêtre vers la tuile au-dessus"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:734
+msgid "Move the focused window to the tile above"
+msgstr "Déplacer la fenêtre active vers la tuile au-dessus"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:740
+msgid "Move window to tile below"
+msgstr "Déplacer la fenêtre vers la tuile en dessous"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:741
+msgid "Move the focused window to the tile below"
+msgstr "Déplacer la fenêtre active vers la tuile en dessous"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:747
+msgid "Span window to right tile"
+msgstr "Étendre la fenêtre vers la tuile de droite"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:748
+msgid "Span the focused window to the tile on its right"
+msgstr "Étendre la fenêtre active vers la tuile à sa droite"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:754
+msgid "Span window to left tile"
+msgstr "Étendre la fenêtre vers la tuile de gauche"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:755
+msgid "Span the focused window to the tile on its left"
+msgstr "Étendre la fenêtre active vers la tuile à sa gauche"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:761
+msgid "Span window above"
+msgstr "Étendre la fenêtre vers la tuile au-dessus"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:762
+msgid "Span the focused window to the tile above"
+msgstr "Étendre la fenêtre active vers la tuile au-dessus"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:768
+msgid "Span window down"
+msgstr "Étendre la fenêtre vers la tuile en dessous"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:769
+msgid "Span the focused window to the tile below"
+msgstr "Étendre la fenêtre active vers la tuile en dessous"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:775
+msgid "Span window to all tiles"
+msgstr "Étendre la fenêtre à toutes les tuiles"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:776
+msgid "Span the focused window to all the tiles"
+msgstr "Étendre la fenêtre active à toutes les tuiles"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:782
+msgid "Untile focused window"
+msgstr "Détacher la fenêtre active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:790
+msgid "Move window to the center"
+msgstr "Déplacer la fenêtre au centre"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:792
+msgid "Move the focused window to the center of the screen"
+msgstr "Déplacer la fenêtre active au centre de l'écran"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:801
+msgid "Focus window to the right"
+msgstr "Focus sur la fenêtre à droite"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:803
+msgid "Focus the window to the right of the current focused window"
+msgstr "Mettre le focus sur la fenêtre à droite de la fenêtre active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:810
+msgid "Focus window to the left"
+msgstr "Focus sur la fenêtre à gauche"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:811
+msgid "Focus the window to the left of the current focused window"
+msgstr "Mettre le focus sur la fenêtre à gauche de la fenêtre active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:817
+msgid "Focus window above"
+msgstr "Focus sur la fenêtre au-dessus"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:818
+msgid "Focus the window above the current focused window"
+msgstr "Mettre le focus sur la fenêtre au-dessus de la fenêtre active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:824
+msgid "Focus window below"
+msgstr "Focus sur la fenêtre en dessous"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:825
+msgid "Focus the window below the current focused window"
+msgstr "Mettre le focus sur la fenêtre en dessous de la fenêtre active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:831
+msgid "Focus next window"
+msgstr "Focus sur la fenêtre suivante"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:832
+msgid "Focus the window next to the current focused window"
+msgstr ""
+"Mettre le focus sur la fenêtre suivante à la fenêtre actuellement active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:838
+msgid "Focus previous window"
+msgstr "Focus sur la fenêtre précédente"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:839
+msgid "Focus the window prior to the current focused window"
+msgstr ""
+"Mettre le focus sur la fenêtre précédente à la fenêtre actuellement active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:845
+#, fuzzy
+msgid "Highlight focused window"
+msgstr "Détacher la fenêtre active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:847
+#, fuzzy
+msgid "Minimize all the other windows and show only the focused window"
+msgstr ""
+"Utiliser des raccourcis pour effectuer des actions sur la fenêtre active"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:854
+#, fuzzy
+msgid "Cycle layouts"
+msgstr "Réinitialiser les dispositions"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:855
+msgid "Cycle through available workspace layouts"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:861
+#, fuzzy
+msgid "Cycle dynamic layouts"
+msgstr "Modifier les dispositions"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:862
+msgid "Cycle through available dynamic layouts of the same size"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:868
+msgid "Cycle dynamic layouts backward"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:869
+msgid "Cycle backward through available dynamic layouts of the same size"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:906
+msgid "View and Customize all the Shortcuts"
+msgstr "Afficher et personnaliser tous les raccourcis"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:934
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:935
+msgid "View and Customize Shortcuts"
+msgstr "Afficher et personnaliser les raccourcis"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:958
+msgid "Enable next/previous window focus to wrap around"
+msgstr "Activer le focus suivant/précédent de la fenêtre pour revenir au début"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:960
+msgid "When focusing next or previous window, wrap around at the window edge"
+msgstr ""
+"Lorsque vous vous concentrez sur la fenêtre suivante ou précédente, faites-"
+"le rebondir sur le bord de la fenêtre"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:966
+msgid "Restrict directional focus to tiled windows"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:968
+msgid "When using directional focus navigation, only consider tiled windows"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:973
+msgid "Import, export and reset"
+msgstr "Importer, exporter et réinitialiser"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:975
+msgid "Import, export and reset the settings of Tiling Shell"
+msgstr "Importer, exporter et réinitialiser les paramètres de Tiling Shell"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:980
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:981
+msgid "Export settings"
+msgstr "Exporter les paramètres"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:982
+msgid "Export settings to a file"
+msgstr "Exporter les paramètres vers un fichier"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:985
+msgid "Export settings to a text file"
+msgstr "Exporter les paramètres vers un fichier texte"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:992
+msgid "Text file"
+msgstr "Fichier texte"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1035
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1036
+msgid "Import settings"
+msgstr "Importer les paramètres"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1037
+msgid "Import settings from a file"
+msgstr "Importer les paramètres à partir d'un fichier"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1040
+msgid "Select a text file to import from"
+msgstr "Sélectionner un fichier texte à importer"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1082
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1083
+msgid "Reset settings"
+msgstr "Réinitialiser les paramètres"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1084
+msgid "Bring back the default settings"
+msgstr "Rétablir les paramètres par défaut"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1090
+msgid "Credits & Open-Source Attributions"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1091
+msgid ""
+"OmniShell fuses two extraordinary projects into a unified, conflict-free "
+"superpower desktop environment."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1095
+msgid "Tiling Shell — Advanced Window Tiling Core"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1096
+msgid "Full credit to original author & creator: Domenico Ferraro"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1103
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1129
+msgid "GitHub Repo"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1108
+msgid "Desktop Icons NG (DING) — Desktop Canvas System"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1109
+msgid "Full credit to original author & creator: Sergio Costas"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1116
+msgid "GitLab Repo"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1121
+msgid "OmniShell Fusion & Performance Overhaul"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1122
+msgid "Modified and Fusion Engineered by Sumon Mahmud"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1147
+msgid "OmniShell Fusion"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1147
+msgid "openSUSE Tumbleweed GNOME 50+"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1151
+msgid ""
+"Engineered with zero telemetry • 100% Local & Private • Rock-Solid Stability"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1157
+msgid "Report an Issue / Feedback"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1222
+msgid "Choose how windows snap to screen edges"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1237
+msgid "Default"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1238
+msgid "Follow quarters or screen halves"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1243
+msgid "Adaptive"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1244
+msgid "Follow corners of selected layout or screen halves"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1249
+msgid "Granular"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1250
+msgid "Follow currently selected layout"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1302
+msgid ""
+"Comma-separated list of applications that should never be tiled. Use the WM "
+"class or the application id, e.g. org.gnome.Nautilus."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1320
+msgid "Applications excluded from tiling"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1321
+msgid "Windows of these applications are never tiled or moved"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1484
+msgid "Choose custom color"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1485
+msgid "Use system accent color"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1539
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1566
+msgid "New accelerator…"
+msgstr "Nouveau raccourci…"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/prefs.js⁩:1569
+msgid "Use Backspace to clear"
+msgstr "Utilisez Backspace pour effacer"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/askRenamePopup.js⁩:53
+msgid "Rename folder"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/askRenamePopup.js⁩:53
+#, fuzzy
+msgid "Rename file"
+msgstr "Fichier texte"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/askRenamePopup.js⁩:63
+msgid "New filename"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/askRenamePopup.js⁩:68
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:304
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:552
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopManager.js⁩:1003
+msgid "OK"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/askRenamePopup.js⁩:68
+msgid "Rename"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:77
+msgid "AutoAr is not installed"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:78
+msgid ""
+"To be able to work with compressed files, install file-roller and/or gir-1.2-"
+"gnomeAutoAr"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:213
+msgid "Extracting files"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:230
+msgid "Compressing files"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:316
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:628
+msgid "Enter a password here"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:349
+msgid "Removing partial file '{outputFile}'"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:368
+msgid "Creating destination folder"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:400
+msgid "Extracting files into '{outputPath}'"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:431
+msgid "Extraction completed"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:432
+msgid "Extracting '{fullPathFile}' has been completed."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:438
+msgid "Extraction cancelled"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:439
+msgid "Extracting '{fullPathFile}' has been cancelled by the user."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:449
+msgid "Passphrase required for {filename}"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:452
+msgid "Error during extraction"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:479
+msgid "Compressing files into '{outputFile}'"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:492
+msgid "Compression completed"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:493
+msgid "Compressing files into '{outputFile}' has been completed."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:497
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:504
+msgid "Cancelled compression"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:498
+msgid "The output file '{outputFile}' already exists."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:505
+msgid "Compressing files into '{outputFile}' has been cancelled by the user."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:508
+msgid "Error during compression"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:541
+msgid "Create archive"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:585
+msgid "Archive name"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:623
+msgid "Password"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:708
+msgid "Compatible with all operating systems."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:714
+msgid "Password protected .zip, must be installed on Windows and Mac."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:720
+msgid "Smaller archives but Linux and Mac only."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/autoAr.js⁩:726
+msgid "Smaller archives but must be installed on Windows and Mac."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/dbusUtils.js⁩:85
+msgid "\"{programName}\" is needed for Desktop Icons"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/dbusUtils.js⁩:86
+msgid ""
+"For this functionality to work in Desktop Icons, you must install "
+"\"{programName}\" in your system."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopIconsUtil.js⁩:156
+msgid "Command not found"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopManager.js⁩:246
+msgid "Nautilus File Manager not found"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopManager.js⁩:247
+msgid "The Nautilus File Manager is mandatory to work with Desktop Icons NG."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopManager.js⁩:905
+msgid "Clear Current Selection before New Search"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopManager.js⁩:993
+msgid "Find Files on Desktop"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopManager.js⁩:1655
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:200
+msgid "New Folder"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopManager.js⁩:1668
+msgid "Folder Creation Failed"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopManager.js⁩:1669
+msgid "Error while trying to create a Folder"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:79
+msgid "Template Creation Failed"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:80
+msgid "Error while trying to create a Document"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:184
+msgid "Keep Arranged..."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:185
+msgid "Keep Stacked by type..."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:186
+msgid "Sort Home/Drives/Trash..."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:188
+msgid "Sort by Name"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:189
+msgid "Sort by Name Descending"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:190
+msgid "Sort by Modified Time"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:191
+msgid "Sort by Type"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:192
+msgid "Sort by Size"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:204
+#, fuzzy
+msgid "New Document"
+msgstr "Nouvelle disposition"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:208
+msgid "Paste"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:211
+msgid "Undo"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:214
+msgid "Redo"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:218
+#, fuzzy
+msgid "Select All"
+msgstr "Sélectionner un fichier de dispositions"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:221
+msgid "Arrange Icons"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:222
+msgid "Arrange By..."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:225
+msgid "Show Desktop in Files"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:226
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:468
+msgid "Open in Terminal"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:229
+msgid "Change Background…"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:232
+#, fuzzy
+msgid "Desktop Icons Settings"
+msgstr "Réinitialiser les paramètres"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/desktopMenu.js⁩:233
+#, fuzzy
+msgid "Display Settings"
+msgstr "Réinitialiser les paramètres"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:159
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:278
+msgid "Home"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:164
+msgid "Trash"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:172
+msgid "{VisibleName} Drive"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:177
+msgid "{VisibleName} Drive Selected"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:183
+msgid "{VisibleName} Folder"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:187
+msgid "{VisibleName} Folder Selected"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:193
+msgid "{VisibleName} Application"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:197
+msgid "{VisibleName} Application Selected"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:203
+msgid "{VisibleName} File"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:207
+msgid "{VisibleName} File Selected"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:370
+msgid "Error while reading Desktop file"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:427
+msgid "Broken Link"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:428
+msgid "Can not open this File because it is a Broken Symlink"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:464
+msgid "Can't open the file"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:492
+msgid "Invalid Permissions on AppImage File"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:493
+msgid ""
+"This .appimage File has incorrect Permissions. Right Click to edit "
+"Properties, then:\n"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:495
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:528
+msgid ""
+"\n"
+"<b>Set Permissions, in \"Others Access\", \"Read Only\" or \"None\"</b>"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:498
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:531
+msgid ""
+"\n"
+"<b>Enable option, \"Allow Executing File as a Program\"</b>"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:506
+msgid ""
+"This .appimage file is not trusted, it can not be launched. To enable "
+"launching, right-click, then:\n"
+"\n"
+"<b>Enable \"Allow Launching\"</b>"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:518
+msgid "Broken Desktop File"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:519
+msgid ""
+"This .desktop file has errors or points to a program without permissions. It "
+"can not be executed.\n"
+"\n"
+"\t<b>Edit the file to set the correct executable Program.</b>"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:525
+msgid "Invalid Permissions on Desktop File"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:526
+msgid ""
+"This .desktop File has incorrect Permissions. Right Click to edit "
+"Properties, then:\n"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:539
+msgid ""
+"This .desktop file is not trusted, it can not be launched. To enable "
+"launching, right-click, then:\n"
+"\n"
+"<b>Enable \"Allow Launching\"</b>"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:732
+msgid "Failed to set execution flag"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:751
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:758
+msgid "Could not apply discrete GPU environment"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:787
+msgid "Could not find discrete GPU data"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:910
+msgid "Failed to set metadata::trusted flag"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItem.js⁩:944
+msgid "Failed to set metadata::sandbox flag"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:232
+msgid "Open All..."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:245
+msgid "Stack This Type"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:245
+msgid "Unstack This Type"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:264
+msgid "Open All With Other Application..."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:264
+msgid "Open With Other Application"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:271
+msgid "Launch using Dedicated Graphics Card"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:282
+msgid "Run as a program"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:297
+msgid "Cut"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:303
+msgid "Copy"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:310
+msgid "Rename…"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:320
+msgid "Move to Trash"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:327
+msgid "Delete permanently"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:336
+msgid "Don't Allow Launching"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:336
+msgid "Allow Launching"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:343
+msgid "Don't use sandboxing"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:343
+msgid "Use sandboxing if available"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:357
+msgid "Empty Trash"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:369
+msgid "Eject"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:377
+msgid "Unmount"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:391
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:399
+msgid "Extract Here"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:405
+msgid "Extract To..."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:413
+msgid "Send to..."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:422
+msgid "Compress {0} folder"
+msgid_plural "Compress {0} folders"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:431
+msgid "Compress {0} file"
+msgid_plural "Compress {0} files"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:441
+msgid "New Folder with {0} item"
+msgid_plural "New Folder with {0} items"
+msgstr[0] ""
+msgstr[1] ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:452
+msgid "Common Properties"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:452
+msgid "Properties"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:460
+msgid "Show All in Files"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:460
+msgid "Show in Files"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:535
+msgid "No Extraction Folder"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:536
+msgid "Unable to extract File, extraction Folder Does not Exist"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:557
+msgid "Select Extract Destination"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:565
+msgid "Select"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:604
+msgid "Can not email a Directory"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/fileItemMenu.js⁩:605
+msgid "Selection includes a Directory, compress the directory to a file first."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/notifyX11UnderWayland.js⁩:34
+msgid "Desktop Icons NG is running under X11Wayland"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/notifyX11UnderWayland.js⁩:35
+msgid ""
+"It seems that you have your system configured to force GTK to use X11. This "
+"works, but it's suboptimal. You should check your system configuration to "
+"fix this."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/notifyX11UnderWayland.js⁩:44
+msgid "Don't show this message anymore."
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/preferences.js⁩:90
+#, fuzzy
+msgid "Settings"
+msgstr "Réinitialiser les paramètres"
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:77
+msgid "Size for the desktop icons"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:77
+msgid "Tiny"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:77
+msgid "Small"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:77
+msgid "Standard"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:77
+msgid "Large"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:78
+msgid "Show the personal folder in the desktop"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:79
+msgid "Show the trash icon in the desktop"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:80
+msgid "Show external drives in the desktop"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:81
+msgid "Show network drives in the desktop"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:84
+msgid "New icons alignment"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:86
+msgid "Top-left corner"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:87
+msgid "Top-right corner"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:88
+msgid "Bottom-left corner"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:89
+msgid "Bottom-right corner"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:91
+msgid "Add new drives to the opposite side of the screen"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:92
+msgid "Highlight the drop place during Drag'n'Drop"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:94
+msgid "Add an emblem to soft links"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:96
+msgid "Use dark text in icon labels"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:103
+msgid "Settings shared with Nautilus"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:125
+msgid "Click type for open files"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:125
+msgid "Single click"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:125
+msgid "Double click"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:126
+msgid "Show hidden files"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:127
+msgid "Show a context menu item to delete permanently"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:132
+msgid "Action to do when launching a program from the desktop"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:133
+msgid "Display the content of the file"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:134
+msgid "Launch the file"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:135
+msgid "Ask what to do"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:141
+msgid "Show image thumbnails"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:142
+msgid "Never"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:143
+msgid "Local files only"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/prefswindow.js⁩:144
+msgid "Always"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/thumbnails.js⁩:34
+msgid "GnomeDesktop-4.0 GIR file not found"
+msgstr ""
+
+#: ⁨/home/spark/Desktop/SEO Automation/OmniShell/src/app/thumbnails.js⁩:35
+msgid ""
+"GnomeDesktop-4.0.gir file is missing. Please, install the required package "
+"in your system."
+msgstr ""
+
+#~ msgid "Donate on ko-fi"
+#~ msgstr "Faire un don sur ko-fi"
+
+#~ msgid "Have issues, you want to suggest a new feature or contribute?"
+#~ msgstr ""
+#~ "Vous avez des problèmes, vous souhaitez suggérer une nouvelle "
+#~ "fonctionnalité ou contribuer ?"
+
+#~ msgid "Open a new issue on"
+#~ msgstr "Ouvrir un nouveau problème sur"
+
+#~ msgid "Report a bug"
+#~ msgstr "Signaler un bug"
+
+#~ msgid "Request a feature"
+#~ msgstr "Demander une fonctionnalité"
