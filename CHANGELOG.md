@@ -5,6 +5,19 @@ All notable changes to OmniShell are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-10-24
+
+### Fixed
+* **Fullscreen Priority in Dynamic Tiling**:
+  * Fixed an issue where maximizing a window (via Maximize button, titlebar double-click, or `<Super>Up`) while dynamic tiling was active caused the window to immediately snap back into its tile slot within 40ms due to `WindowPlacer`'s geometry drift watcher.
+  * Added `isMaximized` detection in `placementAdapter.js` and guarded `pending.disconnectGeometry` and drift watch in `windowPlacer.js` to immediately stop and forget placement when a window enters maximized state.
+  * Preserved background layout memory: maximized windows are retained in dynamic slot tracking so other open windows retain their exact slot geometries without shifting.
+  * Restoring / unmaximizing a window (via Unmaximize button, titlebar double-click, or `<Super>Down`) smoothly snaps the window back into its dynamic layout slot via idle reflow.
+  * Added keyboard shortcuts in dynamic tiling: pressing `<Super>Up` at the top boundary maximizes the window, and pressing `<Super>Down` on a maximized window restores it back to dynamic tiling.
+* **Preferences Footer Styling**:
+  * Cleaned footer labels by removing raw `<small>` and `<b>` markup tags that were rendered literally due to Pango markup parsing limitations on unescaped ampersands.
+  * Styled footer using native Libadwaita typography CSS classes (`title-4`, `dim-label`, `caption`).
+
 ## [1.0.1] - 2026-10-24
 
 ### Added

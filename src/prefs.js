@@ -1214,20 +1214,20 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
       halign: Gtk.Align.CENTER
     });
     const badgeLabel = new Gtk.Label({
-      label: `<b>${_("OmniShell Fusion")} v1.0.0</b> \u2022 <i>${_("Built for GNOME Shell")}</i>`,
-      use_markup: true
+      label: `${_("OmniShell Fusion")} \u2022 ${_("Built for GNOME Shell")}`
     });
-    badgeLabel.set_use_markup(true);
+    badgeLabel.add_css_class("title-4");
     const privacyLabel = new Gtk.Label({
-      label: `<small><b>\u{1F512} ${_("100% Free & Open Source")}</b> \u2022 <b>\u{1F6E1}\u{FE0F} ${_("Zero Telemetry & 100% Privacy")}</b></small>`,
-      use_markup: true
+      label: `\u{1F512} ${_("100% Free & Open Source")}   \u2022   \u{1F6E1}\u{FE0F} ${_("Zero Telemetry & 100% Privacy")}`
     });
-    privacyLabel.set_use_markup(true);
+    privacyLabel.add_css_class("dim-label");
     const noteLabel = new Gtk.Label({
-      label: `<small>${_("Fusing two powerful extensions into one unified system for GNOME \u2022 Modified by Sumon Mahmud")}</small>`,
-      use_markup: true
+      label: _("Fusing two powerful extensions into one unified system for GNOME \u2022 Modified by Sumon Mahmud"),
+      wrap: true,
+      justify: Gtk.Justification.CENTER
     });
-    noteLabel.set_use_markup(true);
+    noteLabel.add_css_class("caption");
+    noteLabel.add_css_class("dim-label");
     bottomBox.append(badgeLabel);
     bottomBox.append(privacyLabel);
     bottomBox.append(noteLabel);

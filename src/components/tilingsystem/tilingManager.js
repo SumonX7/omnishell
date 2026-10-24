@@ -443,7 +443,10 @@ class TilingManager {
         // "unmaximized" handler, because that handler may run *after* this
         // one and would then still block the tiling.
         window.omnishellIntentionalMaximize = false;
-        if (Settings.ENABLE_DYNAMIC_TILING) return;
+        if (Settings.ENABLE_DYNAMIC_TILING) {
+          this._queueDynamicReflow();
+          return;
+        }
         if (Settings.ENABLE_AUTO_TILING) this._autoTile(window, false);
       }
     );
@@ -452,6 +455,7 @@ class TilingManager {
       "maximized",
       (_, window) => {
         delete window.assignedTile;
+        this._placer.forget(placementTargetFor(window));
       }
     );
   }
@@ -1478,15 +1482,39 @@ class TilingManager {
   _dynamicMoveByKeyboard(window, direction) {
     const towards = DYNAMIC_DIRECTION[direction];
     if (!towards) return false;
+    const isMaximized = Boolean(
+      (window.maximizedHorizontally && window.maximizedVertically) ||
+      (window.maximized_horizontally && window.maximized_vertically)
+    );
+    if (isMaximized) {
+      if (direction === KeyBindingsDirection.DOWN) {
+        unmaximizeWindow(window);
+        this._queueDynamicReflow();
+        return true;
+      }
+      return true;
+    }
     const ws = global.workspaceManager.get_active_workspace();
     if (!ws) return false;
     const slots = this._dynamicSlots(ws);
     const from = slots ? slots.windows.indexOf(window) : -1;
     if (!slots || from < 0) return false;
     const { windows, rects } = slots;
-    if (windows.length < 2) return true;
+    if (windows.length < 2) {
+      if (direction === KeyBindingsDirection.UP && window.can_maximize?.()) {
+        maximizeWindow(window);
+        return true;
+      }
+      return true;
+    }
     const to = neighbourIndex(rects, from, towards);
-    if (to < 0) return true;
+    if (to < 0) {
+      if (direction === KeyBindingsDirection.UP && window.can_maximize?.()) {
+        maximizeWindow(window);
+        return true;
+      }
+      return true;
+    }
     this._dynamicSwap(ws, windows[from], windows[to]);
     this._applyDynamicTiling();
     return true;
@@ -1914,6 +1942,7 @@ class TilingManager {
   }
 
   _reflowDynamicWindows() {
+    if (this._isGrabbingWindow) return;
     const workspaces = /* @__PURE__ */ new Set();
     this._dynamicWindows.forEach((window) => {
       const ws = window.get_workspace();
@@ -1925,6 +1954,11 @@ class TilingManager {
       const { windows, rects } = slots;
       windows.forEach((window, slot) => {
         if (!isWindowAlive(window)) return;
+        const isMax = Boolean(
+          (window.maximizedHorizontally && window.maximizedVertically) ||
+          (window.maximized_horizontally && window.maximized_vertically)
+        );
+        if (isMax) return;
         this._easeWindowRectFromTile(this._tileOf(rects[slot]), window);
       });
     });

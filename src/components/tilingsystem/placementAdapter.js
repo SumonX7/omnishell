@@ -33,6 +33,10 @@ function adaptActor(actor, easeMode) {
 function adaptWindow(window, easeMode) {
   return {
     isAlive: () => window.get_compositor_private() !== null,
+    isMaximized: () => Boolean(
+      (window.maximizedHorizontally && window.maximizedVertically) ||
+      (window.maximized_horizontally && window.maximized_vertically)
+    ),
     getFrameRect: () => plainRect(window.get_frame_rect()),
     getBufferRect: () => plainRect(window.get_buffer_rect()),
     moveToMonitor: (index) => window.move_to_monitor(index),

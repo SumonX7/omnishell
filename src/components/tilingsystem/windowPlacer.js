@@ -113,6 +113,10 @@ class WindowPlacer {
     this._inFlight.add(target);
     pending.disconnectGeometry = target.onGeometryChanged(() => {
       if (hist.pending !== pending) return;
+      if (target.isMaximized?.()) {
+        this.forget(target);
+        return;
+      }
       if (rectEquals(target.getFrameRect(), pending.dest)) {
         this._settle(target, hist, pending);
         return;
@@ -120,6 +124,10 @@ class WindowPlacer {
       if (pending.quiet !== null) this._clock.cancel(pending.quiet);
       pending.quiet = this._clock.timeout(this._opts.quietMs, () => {
         pending.quiet = null;
+        if (target.isMaximized?.()) {
+          this.forget(target);
+          return;
+        }
         this._settle(target, hist, pending);
       });
     });
@@ -220,12 +228,16 @@ class WindowPlacer {
     };
     watch.disconnect = target.onGeometryChanged(() => {
       if (hist.watch !== watch || hist.pending) return;
+      if (target.isMaximized?.()) {
+        stop();
+        return;
+      }
       if (sizeEquals(target.getFrameRect(), frame)) return;
       if (watch.quiet !== null) this._clock.cancel(watch.quiet);
       watch.quiet = this._clock.timeout(this._opts.quietMs, () => {
         watch.quiet = null;
         stop();
-        if (!target.isAlive()) return;
+        if (!target.isAlive() || target.isMaximized?.()) return;
         // The drift-triggered re-request used to *reset* the retry counter
         // to `delays.length` instead of consuming one retry. Because the
         // counter was then read as "no retries left" by the `final` check,
