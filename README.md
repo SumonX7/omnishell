@@ -74,36 +74,48 @@ engineering review.
 
 ## Installation
 
-### From a release ZIP
+### Method 1: Using the Automated Installer (Recommended)
 
-1. Download `omnishell@spark.dev.zip`.
-2. Run the installer from the same directory:
+1. Download or clone this repository, or download `omnishell@spark.dev.zip` and `install.sh`.
+2. In your terminal, run:
 
    ```bash
+   chmod +x install.sh
    ./install.sh
    ```
 
-   The installer validates the archive, checks that `gjs`, GTK 4 and
-   libadwaita are present, compiles the GSettings schemas, and installs
-   the extension into `~/.local/share/gnome-shell/extensions/`.
+   The installer automatically checks required dependencies (`gjs`, GTK 4, libadwaita), validates zip integrity, disables any conflicting legacy extensions, extracts the files, recompiles the schemas, and enables OmniShell.
 
-3. **Wayland:** log out and log back in (the shell cannot be reloaded in
-   place).
-   **X11:** press <kbd>Alt</kbd>+<kbd>F2</kbd>, type `r`, press
-   <kbd>Enter</kbd>.
-4. Confirm it is running:
+3. **Restart GNOME Shell**:
+   * **Wayland session:** Log out and log back in.
+   * **X11 session:** Press <kbd>Alt</kbd>+<kbd>F2</kbd>, type `r`, and press <kbd>Enter</kbd>.
+
+4. Verify OmniShell is running:
 
    ```bash
    gnome-extensions info omnishell@spark.dev
    ```
 
-### From source
+---
+
+### Method 2: Direct GNOME Extensions CLI
+
+If you already have `omnishell@spark.dev.zip`:
 
 ```bash
-git clone https://github.com/SumonX7/omnishell.git
-cd omnishell
-make            # builds omnishell@spark.dev.zip
-make install    # builds and installs
+gnome-extensions install --force omnishell@spark.dev.zip
+gnome-extensions enable omnishell@spark.dev
+```
+Then log out and log back in (Wayland) or reload GNOME Shell (X11).
+
+---
+
+### Method 3: Build & Install From Source
+
+```bash
+git clone https://github.com/SumonX7/OmniShell.git
+cd OmniShell
+make install
 ```
 
 The build needs `make`, `zip`, and the GLib tools (`glib-compile-schemas`,
