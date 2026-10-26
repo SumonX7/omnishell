@@ -276,15 +276,19 @@ class DefaultMenu {
         null,
         (pr, res) => {
           if (!pr) return;
-          const [, stdout, stderr] = pr.communicate_utf8_finish(res);
-          if (pr.get_successful()) {
-            debug(stdout);
-            const parsedMonitorsDetails = JSON.parse(stdout);
-            this._layoutsRows.forEach(
-              (lr) => lr.updateMonitorName(true, parsedMonitorsDetails)
-            );
-          } else {
-            debug("error:", stderr);
+          try {
+            const [, stdout, stderr] = pr.communicate_utf8_finish(res);
+            if (pr.get_successful() && stdout) {
+              debug(stdout);
+              const parsedMonitorsDetails = JSON.parse(stdout);
+              this._layoutsRows?.forEach(
+                (lr) => lr.updateMonitorName(true, parsedMonitorsDetails)
+              );
+            } else {
+              debug("error:", stderr);
+            }
+          } catch (err) {
+            debug("communicate_utf8_finish error:", err);
           }
         }
       );

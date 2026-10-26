@@ -46,49 +46,6 @@ function isMovingGrabOp(grabOp) {
   return base === GRAB_OP_WINDOW_BASE;
 }
 
-/**
- * True when the grab operation is a window *resize*.
- *
- * Covers the eight pointer resize directions and their keyboard equivalents.
- */
-function isResizingGrabOp(grabOp) {
-  if (typeof grabOp !== "number") return false;
-  if (isMovingGrabOp(grabOp)) return false;
-  // Every resize op carries the 0x800 "resize edge" bit on top of WINDOW_BASE.
-  return (grabOp & GRAB_OP_WINDOW_BASE) === GRAB_OP_WINDOW_BASE;
-}
-
-/**
- * Normalises a grab op into a comparable direction, dropping the modifier
- * bits (keyboard / unconstrained) that would otherwise make two identical
- * directions compare unequal.
- *
- * Returns the masked value; callers should compare it against the raw
- * `Meta.GrabOp.RESIZING_*` constants only when the modifier bits are known
- * to be absent, which is why {@link resizeDirectionOf} is preferred.
- */
-function normalizeGrabOp(grabOp) {
-  if (typeof grabOp !== "number") return 0;
-  return grabOp & ~(GRAB_OP_MOVING_UNCONSTRAINED | GRAB_OP_KEYBOARD);
-}
-
-/**
- * Returns a stable, direction-only identifier for a resize grab, or 0 when
- * the grab is not a resize.
- *
- * The returned value is the raw `Meta.GrabOp.RESIZING_*` constant with the
- * keyboard bit stripped, so it matches the values the switch statements in
- * resizeManager.js use.
- */
-function resizeDirectionOf(grabOp) {
-  if (typeof grabOp !== "number") return 0;
-  if (isMovingGrabOp(grabOp)) return 0;
-  return grabOp & ~GRAB_OP_KEYBOARD;
-}
-
 export {
-  isMovingGrabOp,
-  isResizingGrabOp,
-  normalizeGrabOp,
-  resizeDirectionOf
+  isMovingGrabOp
 };

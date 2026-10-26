@@ -37,22 +37,26 @@ class MetaWindowGroup {
   }
 
   get_workspace() {
-    return this._windows[0].get_workspace();
+    return this._windows[0]?.get_workspace?.();
   }
 
   activate(time) {
     this._windows.forEach((win) => {
-      win.activate(time);
-      time = global.get_current_time();
+      try {
+        if (win && !win.unmanaged) {
+          win.activate(time);
+          time = global.get_current_time();
+        }
+      } catch {}
     });
   }
 
   connect(...args) {
-    return this._windows[0].connect(...args);
+    return this._windows[0]?.connect?.(...args);
   }
 
   connectObject(...args) {
-    return this._windows[0].connectObject(...args);
+    return this._windows[0]?.connectObject?.(...args);
   }
 
   onAllWindowsUnmanaged(fn) {

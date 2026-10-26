@@ -188,12 +188,12 @@
             <description>Dinamically adapt to the window's border radius.</description>
         </key>
         <key name="snap-assistant-animation-time" type="u">
-            <default>180</default>
+            <default>0</default>
             <summary>Snap assistant animation time (milliseconds)</summary>
             <description>Animation time in milliseconds of the snap assistant</description>
         </key>
         <key name="tile-preview-animation-time" type="u">
-            <default>100</default>
+            <default>0</default>
             <summary>Tile animation time (milliseconds)</summary>
             <description>Animation time in milliseconds of the tiles</description>
         </key>

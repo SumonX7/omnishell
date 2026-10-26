@@ -46,7 +46,7 @@ const _SnapAssistContent = class _SnapAssistContent extends St.BoxLayout {
     this._showing = true;
     this._padding = 0;
     this._blur = false;
-    this._snapAssistantAnimationTime = 100;
+    this._snapAssistantAnimationTime = 0;
     this._monitorIndex = monitorIndex;
     this._snapAssistantThreshold = 54 * getMonitorScalingFactor(this._monitorIndex);
     Settings.bind(

@@ -88,8 +88,13 @@ export var ThumbnailLoader = class {
             try {
                 const thumbnailPixbuf = obj.generate_thumbnail_finish(res);
                 this._thumbnailFactoryLarge.save_thumbnail_async(thumbnailPixbuf, file.uri, modifiedTime, this._doCancel, (obj2, res2) => {
-                    obj2.save_thumbnail_finish(res2);
-                    this._resolveThumbnail(file, resolve);
+                    try {
+                        obj2.save_thumbnail_finish(res2);
+                        this._resolveThumbnail(file, resolve);
+                    } catch (err) {
+                        print(`Error saving thumbnail: ${err.message}`);
+                        resolve(null);
+                    }
                     this._launchNewBuild();
                 });
             } catch (e) {

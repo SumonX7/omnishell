@@ -1161,13 +1161,13 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
     );
     importExportGroup.add(resetSettingsBtn);
     const creditsGroup = new Adw.PreferencesGroup({
-      title: _("Credits & Attributions"),
-      description: _("Built by modifying and fusing two exceptional GNOME extensions (Tiling Shell & Desktop Icons NG).")
+      title: _("Credits &amp; Attributions"),
+      description: _("Built by modifying and fusing two exceptional GNOME extensions (Tiling Shell &amp; Desktop Icons NG).")
     });
     prefsPage.add(creditsGroup);
     const tilingShellCreditRow = new Adw.ActionRow({
       title: _("Tiling Shell \u2014 Advanced Window Tiling Core"),
-      subtitle: _("Original author & creator: Domenico Ferraro (Full Credit)")
+      subtitle: _("Original author &amp; creator: Domenico Ferraro (Full Credit)")
     });
     tilingShellCreditRow.add_prefix(new Gtk.Image({
       iconName: "view-grid-symbolic",
@@ -1180,7 +1180,7 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
     creditsGroup.add(tilingShellCreditRow);
     const dingCreditRow = new Adw.ActionRow({
       title: _("Desktop Icons NG (DING) \u2014 Desktop Canvas System"),
-      subtitle: _("Original author & creator: Sergio Costas (Full Credit)")
+      subtitle: _("Original author &amp; creator: Sergio Costas (Full Credit)")
     });
     dingCreditRow.add_prefix(new Gtk.Image({
       iconName: "user-desktop-symbolic",
@@ -1192,7 +1192,7 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
     ));
     creditsGroup.add(dingCreditRow);
     const fusionCreditRow = new Adw.ActionRow({
-      title: _("OmniShell \u2014 Tiling & Desktop Fusion for GNOME"),
+      title: _("OmniShell \u2014 Tiling &amp; Desktop Fusion for GNOME"),
       subtitle: _("Modified and Fusion Engineered by Sumon Mahmud")
     });
     fusionCreditRow.add_prefix(new Gtk.Image({
@@ -1213,8 +1213,11 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
       margin_bottom: 24,
       halign: Gtk.Align.CENTER
     });
+    const versionStr = this.metadata?.["version-name"]
+      ? `v${this.metadata["version-name"]}`
+      : (this.metadata?.version ? `v${this.metadata.version}` : "v1.0.6");
     const badgeLabel = new Gtk.Label({
-      label: `${_("OmniShell Fusion")} \u2022 ${_("Built for GNOME Shell")}`
+      label: `${_("OmniShell Fusion")} (${versionStr}) \u2022 ${_("Built for GNOME Shell")}`
     });
     badgeLabel.add_css_class("title-4");
     const privacyLabel = new Gtk.Label({

@@ -9,10 +9,11 @@
  * bridge and thereby control how the tiling manager reacts to desktop
  * launches.
  *
- * The bridge is now published under a Symbol key, which cannot be guessed
- * from outside and does not show up when `global` is enumerated. This module
- * is the single place that knows the symbol, and it is imported by both the
- * producer and the consumer.
+ * The bridge is now published under a Symbol key: it does not show up when
+ * `global` is enumerated and cannot collide with an ordinary string property.
+ * This is not a security boundary, because `Symbol.for()` shares one global
+ * registry and another extension can obtain the same symbol; it only keeps
+ * the property out of casual enumeration and accidental namespace clashes.
  */
 
 /** Symbol under which the active DingBridge is published on `global`. */

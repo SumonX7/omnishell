@@ -99,15 +99,37 @@ export function spawnCommandLine(commandLine, environ = null) {
  * @param {string} command
  */
 export function launchTerminal(workdir, command) {
-    const settings = new Gio.Settings({schema_id: Enums.TERMINAL_SCHEMA});
-    const settingsExec = settings.get_string(Enums.EXEC_KEY);
-    const terminals = ['xdg-terminal-exec', settingsExec, 'kgx', 'gnome-terminal'];
+    let settingsExec = null;
+    try {
+        const settings = new Gio.Settings({schema_id: Enums.TERMINAL_SCHEMA});
+        settingsExec = settings.get_string(Enums.EXEC_KEY);
+    } catch {}
+    const terminals = [
+        'xdg-terminal-exec',
+        settingsExec,
+        'ptyxis',
+        'kgx',
+        'gnome-terminal',
+        'konsole',
+        'alacritty',
+        'kitty',
+        'foot',
+        'wezterm',
+        'xfce4-terminal',
+        'mate-terminal',
+        'ghostty',
+        'xterm'
+    ].filter(Boolean);
     for (const name of terminals) {
         const exec = GLib.find_program_in_path(name);
         if (exec !== null) {
             const argv = [exec];
             if (workdir && (name === 'xdg-terminal-exec'))
                 argv.push(`--dir=${workdir}`);
+            else if (workdir && (name === 'konsole'))
+                argv.push(`--workdir=${workdir}`);
+            else if (workdir && (name === 'ptyxis'))
+                argv.push(`--working-directory=${workdir}`);
 
             if (command) {
                 argv.push('-e');
@@ -141,6 +163,9 @@ export function trySpawn(workdir, argv, environ = null) {
      *
      * https://gitlab.gnome.org/GNOME/gnome-shell/blob/gnome-3-30/js/misc/util.js
      */
+
+    if (!environ)
+        environ = getFilteredEnviron();
 
     var pid;
     try {

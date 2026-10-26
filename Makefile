@@ -70,7 +70,6 @@ pot:
 
 install: build
 	@bash install.sh
-	@git checkout -- $(ZIP) 2>/dev/null || true
 
 update:
 	@echo "==> Updating OmniShell to latest version"
@@ -87,8 +86,14 @@ check:
 	@node verify_round2.mjs
 	@echo "==> Dynamic-layout cache verification"
 	@node verify_perf.mjs
+	@echo "==> DING refresh verification"
+	@node verify_ding_refresh.mjs
 	@echo "==> Audit-claim verification"
 	@node verify_claims.mjs
+	@echo "==> Dynamic-layout math"
+	@node test_dyn.mjs
+	@echo "==> Pin handling"
+	@node verify_pins.mjs
 	@echo "==> Schema compilation"
 	@glib-compile-schemas --strict "$(SRC)/schemas"
 	@echo "All checks passed."

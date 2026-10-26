@@ -48,13 +48,15 @@ const _SuggestedWindowPreview = class _SuggestedWindowPreview extends Shell.Wind
     this._previewContainer.add_child(this.windowContainer);
     this._addWindow(metaWindow);
     this._stackAbove = null;
-    this._windowActor.connectObject("destroy", () => this.destroy(), this);
+    if (this._windowActor) {
+      this._windowActor.connectObject("destroy", () => this.destroy(), this);
+    }
     this._updateAttachedDialogs();
     this.connect("destroy", this._onDestroy.bind(this));
     this._overlayShown = false;
     const tracker = Shell.WindowTracker.get_default();
     const app = tracker.get_window_app(this._metaWindow);
-    this._icon = app.create_icon_texture(ICON_SIZE);
+    this._icon = app ? app.create_icon_texture(ICON_SIZE) : new St.Icon({ icon_name: "application-x-executable", icon_size: ICON_SIZE });
     this._icon.add_style_class_name("window-icon");
     this._icon.add_style_class_name("icon-dropshadow");
     this._icon.set({
@@ -130,7 +132,7 @@ const _SuggestedWindowPreview = class _SuggestedWindowPreview extends Shell.Wind
     if (this._metaWindow.title) return this._metaWindow.title;
     const tracker = Shell.WindowTracker.get_default();
     const app = tracker.get_window_app(this._metaWindow);
-    return app.get_name();
+    return app ? app.get_name() : "";
   }
 
   showOverlay(animate) {

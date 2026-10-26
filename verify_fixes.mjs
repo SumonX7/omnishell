@@ -40,7 +40,9 @@ const check = (id, description, ok, evidence) => {
 
 // --- A4: grabOp & ~1024 misses KEYBOARD_MOVING ---
 {
-  const s = read('components/tilingsystem/tilingManager.js');
+  // The global grab signal is owned by the drag coordinator now, so that is
+  // where the grab-op classification must live.
+  const s = read('components/tilingsystem/dragCoordinator.js');
   const oldPattern = /grabOp\s*&\s*~1024\s*\)?\s*===\s*1/.test(s);
   const usesHelper = /isMovingGrabOp\(grabOp\)/.test(s);
   const helper = read('utils/grabOp.js');
@@ -235,11 +237,17 @@ const check = (id, description, ok, evidence) => {
 
 // --- NEW: drag-scoped stage handlers ---
 {
-  const s = read('components/tilingsystem/tilingManager.js');
-  const scoped = /_dragStageSignals/.test(s);
-  const disconnects = /_dragStageSignals\.disconnect\(\)/.test(s);
+  // Stage handlers are installed once by the coordinator and removed by its
+  // _endDrag(), not by every monitor manager. Managers must no longer carry
+  // their own drag-scoped stage containers.
+  const s = read('components/tilingsystem/dragCoordinator.js');
+  const managers = read('components/tilingsystem/tilingManager.js');
+  const scoped = /_stageSignals/.test(s);
+  const disconnects = /_endDrag\(\)[\s\S]{0,600}?_stageSignals\.disconnect\(\)/.test(s);
+  const managerClean = !/_dragStageSignals/.test(managers);
   check('DRAG', 'drag-scoped stage handlers are removed when the drag ends',
-    scoped && disconnects, `scoped=${scoped}, disconnected-at-end=${disconnects}`);
+    scoped && disconnects && managerClean,
+    `coordinator-scoped=${scoped}, disconnected-at-end=${disconnects}, manager-clean=${managerClean}`);
 }
 
 // ============================================================
@@ -524,6 +532,40 @@ const check = (id, description, ok, evidence) => {
   check('R2-PREFSIG', 'preferences.js only connects to signals its widgets actually have',
     !badApply && unknown.length === 0,
     `bad-apply=${badApply}, unknown-signals=${unknown.join(',') || 'none'}`);
+}
+
+// --- P3-CREATE: a new window is dispatched to one owner manager ---
+{
+  const ext = read('extension.js');
+  const tm = read('components/tilingsystem/tilingManager.js');
+  const routed = /"window-created"/.test(ext) &&
+    /_managerForWindow\(window\)\?\.onWindowCreated\(window\)/.test(ext);
+  const perManager = /connect\(\s*global\.display,\s*"window-created"/.test(tm);
+  check('P3-CREATE', 'window-created is dispatched to one owner manager',
+    routed && !perManager, `extension-routes=${routed}, manager-duplicates=${perManager}`);
+}
+
+// --- P3-MONITOR: dynamic ownership follows window-entered-monitor ---
+{
+  const ext = read('extension.js');
+  const tm = read('components/tilingsystem/tilingManager.js');
+  const routed = /"window-entered-monitor"/.test(ext);
+  const handover = /onWindowLeftMonitor\(window\)/.test(tm) &&
+    /onWindowEnteredMonitor\(window\)/.test(tm);
+  const dropSync = /_syncDynamicOwnership\(window\)/.test(tm);
+  const noPoll = !/"position-changed"/.test(tm);
+  check('P3-MONITOR', 'dynamic windows hand over on monitor change instead of polling',
+    routed && handover && dropSync && noPoll,
+    `routed=${routed}, handover=${handover}, drop-sync=${dropSync}, position-poll=${!noPoll}`);
+}
+
+// --- P3-MINIMIZE: only the owner manager reflows on minimize/unminimize ---
+{
+  const tm = read('components/tilingsystem/tilingManager.js');
+  const minimize = /"minimize"[\s\S]{0,400}?_dynamicWindowSignals\.has\(window\)/.test(tm);
+  const unminimize = /"unminimize"[\s\S]{0,400}?_dynamicWindowSignals\.has\(window\)/.test(tm);
+  check('P3-MINIMIZE', 'minimize/unminimize only reflows the manager that tracks the window',
+    minimize && unminimize, `minimize=${minimize}, unminimize=${unminimize}`);
 }
 
 // ==== OUTPUT ====

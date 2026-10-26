@@ -212,6 +212,10 @@ var dbusManager = null;
 // The ids are OmniShell-specific: upstream DING owns "com.rastersoft.ding", and
 // because the application below is created with Gio.ApplicationFlags.REPLACE,
 // claiming the upstream id would displace a separately installed upstream DING.
+const dingAppId = asDesktop ? DING_APP_ID : DING_APP_ID_TEST;
+GLib.set_prgname(dingAppId);
+GLib.set_application_name('Desktop Icons NG');
+
 const dingApp = new Adw.Application({
     application_id: asDesktop ? DING_APP_ID : DING_APP_ID_TEST,
     flags: Gio.ApplicationFlags.HANDLES_COMMAND_LINE | Gio.ApplicationFlags.REPLACE,
@@ -248,8 +252,9 @@ dingApp.connect('activate', () => {
 });
 
 dingApp.connect('command-line', (app, commandLine) => {
-    let argv = [];
-    argv = commandLine.get_arguments();
+    let argv = commandLine.get_arguments();
+    if (argv.length > 0)
+        argv = argv.slice(1);
     parseCommandLine(argv);
     if (!errorFound) {
         if (commandLine.get_is_remote())

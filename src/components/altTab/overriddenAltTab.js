@@ -39,10 +39,16 @@ class OverriddenAltTab {
 
   // the function will be treated as a method of class WindowMenu
   newShow(backward, binding, mask) {
-    this._switcherList._list.get_layout_manager().homogeneous = false;
-    this._switcherList._squareItems = false;
+    if (this._switcherList?._list?.get_layout_manager) {
+      const lm = this._switcherList._list.get_layout_manager();
+      if (lm) lm.homogeneous = false;
+    }
+    if (this._switcherList) {
+      this._switcherList._squareItems = false;
+    }
     const oldFunction = OverriddenAltTab._old_show?.bind(this);
     const res = !oldFunction || oldFunction(backward, binding, mask);
+    if (!res || !this._items || this._items.length === 0) return res;
     const tiledWindows = this._getWindowList().filter((win) => win.assignedTile);
     if (tiledWindows.length <= 1) return res;
     const tiles = tiledWindows.map((win) => win.assignedTile).filter((tile) => tile !== void 0);

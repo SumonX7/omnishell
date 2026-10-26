@@ -62,10 +62,10 @@ class DingBridge {
     this._enabledSettingSignalId = 0;
     this._safeZoneSettingSignalId = 0;
     // The bridge is published under a Symbol key rather than a string
-    // property: a string property on `global` is reachable by every other
-    // extension in the session, and being able to overwrite it would let a
-    // third-party extension redirect the tiling manager's desktop-launch
-    // detection. A Symbol key is not enumerable and not guessable.
+    // property: a string property on `global` is easy to collide with and
+    // shows up during enumeration. This is not a security boundary, because
+    // `Symbol.for()` uses a shared registry that any extension can query; it
+    // only avoids accidental clashes and casual introspection.
     setDingBridge(this);
   }
 
@@ -163,14 +163,12 @@ class DingBridge {
         );
         this._desktopGeometry.set_enabled(true);
         this._disableTimerId = this._disableTimer.connect("activate", () => {
-          if (this._currentProcess?.subprocess) {
-            this._currentProcess.cancelTimer();
-          }
+          this._currentProcess?.cancelTimer();
         });
         this._folderOpenedAction = new Gio.SimpleAction({
           name: "folderOpened"
         });
-        this._folderOpenedAction.connect("activate", () => {
+        this._folderOpenedActionId = this._folderOpenedAction.connect("activate", () => {
           this._lastFolderOpenTime = GLib.get_monotonic_time();
         });
         // The "Open Full Settings" button in the preferences window used to
@@ -181,7 +179,7 @@ class DingBridge {
         this._changeDesktopIconSettingsAction = new Gio.SimpleAction({
           name: "changeDesktopIconSettings"
         });
-        this._changeDesktopIconSettingsAction.connect("activate", () => {
+        this._changeDesktopIconSettingsActionId = this._changeDesktopIconSettingsAction.connect("activate", () => {
           this._currentProcess?.showDesktopIconSettings?.();
         });
         this._actionGroup = new Gio.SimpleActionGroup();
@@ -210,6 +208,10 @@ class DingBridge {
 
   consumeFolderOpened() {
     this._lastFolderOpenTime = 0;
+  }
+
+  query_window_belongs_to(window) {
+    return this._currentProcess?.query_window_belongs_to?.(window) ?? false;
   }
 
   updateDesktopGeometry() {
@@ -330,13 +332,23 @@ class DingBridge {
       GLib.source_remove(this._launchDesktopId);
       this._launchDesktopId = 0;
     }
-    if (this._currentProcess?.subprocess) {
+    const subprocess = this._currentProcess?.subprocess;
+    if (subprocess) {
       this._currentProcess.cancelTimer();
       this._currentProcess.cancellable?.cancel();
       try {
-        this._currentProcess.subprocess.send_signal(15);
+        subprocess.send_signal(15);
       } catch {
       }
+      // DING handles SIGTERM gracefully, but a hung child must not survive
+      // and keep its desktop windows alongside the replacement process.
+      GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+        try {
+          if (!subprocess.get_if_exited()) subprocess.force_exit();
+        } catch {
+        }
+        return GLib.SOURCE_REMOVE;
+      });
     }
     this._currentProcess = null;
     this._x11Manager?.setWaylandClient(null);
@@ -346,12 +358,26 @@ class DingBridge {
     this._isEnabled = false;
     this.killCurrentProcess();
     this._x11Manager?.disable();
+    if (this._visibleAreaId && this.visibleArea) {
+      this.visibleArea.disconnect(this._visibleAreaId);
+      this._visibleAreaId = 0;
+    }
     this.visibleArea?.disable();
     this.visibleArea = null;
     if (this._disableTimerId && this._disableTimer) {
       this._disableTimer.disconnect(this._disableTimerId);
       this._disableTimerId = 0;
       this._disableTimer = null;
+    }
+    if (this._folderOpenedActionId && this._folderOpenedAction) {
+      this._folderOpenedAction.disconnect(this._folderOpenedActionId);
+      this._folderOpenedActionId = 0;
+      this._folderOpenedAction = null;
+    }
+    if (this._changeDesktopIconSettingsActionId && this._changeDesktopIconSettingsAction) {
+      this._changeDesktopIconSettingsAction.disconnect(this._changeDesktopIconSettingsActionId);
+      this._changeDesktopIconSettingsActionId = 0;
+      this._changeDesktopIconSettingsAction = null;
     }
     this._desktopGeometry = null;
     if (this._dbusConnectionGroupId && this._dbusConnection) {
@@ -367,10 +393,6 @@ class DingBridge {
     if (this._scaleFactorId) {
       St.ThemeContext.get_for_stage(global.stage).disconnect(this._scaleFactorId);
       this._scaleFactorId = 0;
-    }
-    if (this._visibleAreaId && this.visibleArea) {
-      this.visibleArea.disconnect(this._visibleAreaId);
-      this._visibleAreaId = 0;
     }
     if (this._startupPreparedId) {
       Main.layoutManager.disconnect(this._startupPreparedId);

@@ -27,12 +27,13 @@ const _MultipleWindowsIcon = class _MultipleWindowsIcon extends LayoutWidget {
     });
     this._previews.forEach((preview, index) => {
       const window = params.windows[index];
-      if (!window) {
+      const source = window?.get_compositor_private?.();
+      if (!source) {
         preview.hide();
         return;
       }
       const winClone = new Clutter.Clone({
-        source: window.get_compositor_private(),
+        source,
         width: preview.innerWidth,
         height: preview.innerHeight
       });

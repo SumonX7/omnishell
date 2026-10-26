@@ -44,21 +44,33 @@ class LaunchSubprocess {
   }
 
   spawnv(argv) {
-    try {
-      if (Meta.WaylandClient && Meta.WaylandClient.new_subprocess) {
+    this._waylandClient = null;
+    // `Meta.WaylandClient` also exists on X11 builds, but it cannot attach a
+    // subprocess to an X11 compositor. Only use it on an actual Wayland
+    // session, and fall back to a normal spawn if it fails for any reason.
+    if (Meta.is_wayland_compositor?.() && Meta.WaylandClient?.new_subprocess) {
+      try {
         this._waylandClient = Meta.WaylandClient.new_subprocess(
           global.context,
           this._launcher,
           argv
         );
         this.subprocess = this._waylandClient.get_subprocess();
-      } else {
-        this.subprocess = this._launcher?.spawnv(argv) ?? null;
-      }
-    } catch (e) {
-      this.subprocess = null;
-      console.log(`[OmniShell] Error launching Desktop process: ${e.message}
+      } catch (e) {
+        this._waylandClient = null;
+        this.subprocess = null;
+        console.log(`[OmniShell] Wayland client launch failed, falling back to normal spawn: ${e.message}
 ${e.stack}`);
+      }
+    }
+    if (!this.subprocess && !this._waylandClient) {
+      try {
+        this.subprocess = this._launcher?.spawnv(argv) ?? null;
+      } catch (e) {
+        this.subprocess = null;
+        console.log(`[OmniShell] Error launching Desktop process: ${e.message}
+${e.stack}`);
+      }
     }
     try {
       this._launcher?.close();
@@ -146,6 +158,9 @@ ${e.stack}`);
           const [output, length] = object.read_line_finish_utf8(res);
           if (length && output) {
             print(`[OmniShell-${this._processId}]: ${output}`);
+            if (output.includes("Creating desktop index")) {
+              this.cancelTimer();
+            }
           }
         } catch (e) {
           if (e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
@@ -163,15 +178,26 @@ ${e.stack}`);
   query_window_belongs_to(window) {
     if (!this.processRunning) return false;
     try {
+      const title = window.get_title?.();
+      const isDingByTitle = title && (title.startsWith("Desktop Icons ") || title === "DING" || title.startsWith("DING "));
       if (this._waylandClient && typeof this._waylandClient.owns_window === "function") {
         const ownsWindow = this._waylandClient.owns_window(window);
-        if (ownsWindow && this._launchTimer !== 0 && this._waitingForWindows !== 0) {
+        if ((ownsWindow || isDingByTitle) && this._launchTimer !== 0 && this._waitingForWindows !== 0) {
           this._waitingForWindows--;
           if (this._waitingForWindows === 0) {
             this.cancelTimer();
           }
         }
-        return ownsWindow;
+        if (ownsWindow) return true;
+      }
+      if (isDingByTitle) {
+        if (this._launchTimer !== 0 && this._waitingForWindows !== 0) {
+          this._waitingForWindows--;
+          if (this._waitingForWindows === 0) {
+            this.cancelTimer();
+          }
+        }
+        return true;
       }
     } catch (error) {
       console.log(`[OmniShell] query_window_belongs_to error: ${error.message}`);

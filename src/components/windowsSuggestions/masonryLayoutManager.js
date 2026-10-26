@@ -76,12 +76,6 @@ const _MasonryLayoutManager = class _MasonryLayoutManager extends Clutter.Layout
   vfunc_allocate(container, box) {
     const children = container.get_children();
     if (children.length === 0) return;
-    console.log(
-      box.get_width(),
-      container.width,
-      box.get_height(),
-      container.height
-    );
     const availableWidth = container.width - 2 * this._spacing;
     const availableHeight = container.height - 2 * this._spacing;
     const allocationCache = container._allocationCache || /* @__PURE__ */ new Map();

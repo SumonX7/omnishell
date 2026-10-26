@@ -34,7 +34,7 @@ const _GlobalState = class _GlobalState extends GObject.Object {
     super();
     this._signals = new SignalHandling();
     this._layouts = Settings.get_layouts_json();
-    this._tilePreviewAnimationTime = 100;
+    this._tilePreviewAnimationTime = 0;
     this._selected_layouts = /* @__PURE__ */ new Map();
     this.validate_selected_layouts();
     Settings.bind(
@@ -60,15 +60,15 @@ const _GlobalState = class _GlobalState extends GObject.Object {
           this.validate_selected_layouts();
           return;
         }
-        const defaultLayout = this._layouts[0];
+        const defaultId = this._layouts[0]?.id ?? "";
         const n_monitors = Main.layoutManager.monitors.length;
         const n_workspaces = global.workspaceManager.get_n_workspaces();
         for (let i = 0; i < n_workspaces; i++) {
           const ws = global.workspaceManager.get_workspace_by_index(i);
           if (!ws) continue;
-          const monitors_layouts = i < selected_layouts.length ? selected_layouts[i] : [defaultLayout.id];
+          const monitors_layouts = i < selected_layouts.length ? selected_layouts[i] : [defaultId];
           while (monitors_layouts.length < n_monitors)
-            monitors_layouts.push(defaultLayout.id);
+            monitors_layouts.push(defaultId);
           while (monitors_layouts.length > n_monitors)
             monitors_layouts.pop();
           this._selected_layouts.set(ws, monitors_layouts);
@@ -90,7 +90,7 @@ const _GlobalState = class _GlobalState extends GObject.Object {
         if (secondLastWsLayoutsId.length === 0) {
           secondLastWsLayoutsId.push(
             ...Main.layoutManager.monitors.map(
-              () => this._layouts[0].id
+              () => this._layouts[0]?.id ?? ""
             )
           );
         }
@@ -150,7 +150,7 @@ const _GlobalState = class _GlobalState extends GObject.Object {
       if (!ws) continue;
       const monitors_layouts = i < old_selected_layouts.length ? old_selected_layouts[i] : [];
       while (monitors_layouts.length < n_monitors)
-        monitors_layouts.push(this._layouts[0].id);
+        monitors_layouts.push(this._layouts[0]?.id ?? "");
       while (monitors_layouts.length > n_monitors) monitors_layouts.pop();
       monitors_layouts.forEach((_, ind) => {
         if (this._layouts.findIndex(
@@ -226,7 +226,9 @@ const _GlobalState = class _GlobalState extends GObject.Object {
     const selectedLayouts = Settings.get_selected_layouts();
     if (workspaceIndex < 0 || workspaceIndex >= selectedLayouts.length)
       workspaceIndex = 0;
-    const monitors_selected = workspaceIndex < selectedLayouts.length ? selectedLayouts[workspaceIndex] : _GlobalState.get().layouts[0].id;
+    const monitors_selected = workspaceIndex < selectedLayouts.length && Array.isArray(selectedLayouts[workspaceIndex])
+      ? selectedLayouts[workspaceIndex]
+      : [this._layouts[0]?.id];
     if (monitorIndex < 0 || monitorIndex >= monitors_selected.length)
       monitorIndex = 0;
     return this._layouts.find(
@@ -244,9 +246,13 @@ const _GlobalState = class _GlobalState extends GObject.Object {
 
   setSelectedLayoutOfMonitor(layoutToSelectId, monitorIndex) {
     const selected = Settings.get_selected_layouts();
-    selected[global.workspaceManager.get_active_workspace_index()][monitorIndex] = layoutToSelectId;
+    const activeIndex = global.workspaceManager.get_active_workspace_index();
+    if (!selected[activeIndex]) {
+      selected[activeIndex] = [];
+    }
+    selected[activeIndex][monitorIndex] = layoutToSelectId;
     const n_workspaces = global.workspaceManager.get_n_workspaces();
-    if (global.workspaceManager.get_active_workspace_index() === n_workspaces - 2) {
+    if (activeIndex === n_workspaces - 2) {
       const lastWs = global.workspaceManager.get_workspace_by_index(
         n_workspaces - 1
       );
@@ -255,6 +261,9 @@ const _GlobalState = class _GlobalState extends GObject.Object {
         (win) => win.assignedTile && win.get_monitor() === monitorIndex
       );
       if (!tiledWindows) {
+        if (!selected[lastWs.index()]) {
+          selected[lastWs.index()] = [];
+        }
         selected[lastWs.index()][monitorIndex] = layoutToSelectId;
       }
     }

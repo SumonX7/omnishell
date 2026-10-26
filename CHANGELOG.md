@@ -5,6 +5,94 @@ All notable changes to OmniShell are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-10-26
+
+### Fixed
+* **Desktop Icons & Tiling System Conflicts Resolved**:
+  * **DING Launch Watchdog Suicide Loop**: Fixed `desktopManager.js` where `disableTimer` was erroneously gated behind `if (this.using_X11)`, causing DING on Wayland to never cancel the watchdog, resulting in an 8-second suicide loop (`force_exit()`) repeated 3 times. Timer cancellation is now unconditionally dispatched over D-Bus upon startup and window creation.
+  * **Watchdog Multi-Layered Protection**: Added automatic watchdog cancellation in `launchSubprocess.js` upon receiving stdout message `Creating desktop index` and during window ownership queries.
+  * **Wayland Process Identification**: Configured `GLib.set_prgname(dingAppId)` and `GLib.set_application_name('Desktop Icons NG')` in `ding.js` so Mutter recognizes the subprocess as `com.spark.omnishell.ding` rather than a generic `gjs` process.
+  * **Tiling System Canvas Stealing Fixed**: Prevented `TilingManager` from ever grabbing, auto-tiling, or adding desktop canvas windows (`Desktop Icons 1`) to dynamic tiling arrangements.
+  * **Desktop Filter Bridge Query**: Integrated `getDingBridge()?.query_window_belongs_to(window)` and `isManagedWindow(window)` into `desktopFilter.js` to immediately recognize desktop canvases before tiling or window border managers touch them.
+  * **UI and Navigation Isolation**: Filtered desktop windows out of `filterUnfocusableWindows()` in `ui.js`, `overriddenWindowMenu.js`, and `raiseTogetherManager.js` to prevent desktop canvas selection during keyboard focus, window menus, and grouping.
+* **DING Desktop-Refresh Coalescing**: Event-driven desktop refreshes are debounced (200 ms) and single-flight; the 500 ms retry/`_forceDraw` loop is gone, so an idle desktop no longer wakes DING twice a second. The new `verify_ding_refresh.mjs` harness (24 checks) is part of `make check` and CI.
+* **Latent Bug Fixes & Shell Hardening**:
+  * **Sticky Window & Workspace Fallbacks**: Guarded `window.get_workspace()?.index?.() ?? 0` in `tilingManager.js` and `extension.js`, preventing fatal crashes when moving or tiling sticky windows.
+  * **Multi-Monitor Edge Cases**: Guarded against `-1` monitor indices across `layoutSwitcher.js` and `indicator.js`.
+  * **Windows Suggestions Crash Resilience**: Added null checks for unmapped window actors and non-desktop-file apps in `suggestedWindowPreview.js` and `tilingLayoutWithSuggestions.js`.
+  * **Window Resize Concurrency**: Added null checks and try/catch protection around `move_resize_frame` in `resizeManager.js` to handle windows closed mid-resize.
+  * **Alt-Tab Window Group Safety**: Guarded `MetaWindowGroup.js` and `MultipleWindowsIcon.js` against dead actors and unmanaged windows during `Clutter.Clone` creation.
+  * **Raise-Together Hardening**: Prevented duplicate window raises and guarded GObject signal blocking against unmanaged windows in `raiseTogetherManager.js`.
+  * **Subprocess Monitor Description**: Updated `monitorDescription.js` shebang and imports to `gi://Gtk?version=4.0` / `gi://Gdk?version=4.0`, wrapped `JSON.parse` in try/catch in `defaultMenu.js`.
+  * **openSUSE Terminal Detection**: Expanded candidate terminal list to support `konsole`, `xterm`, `ptyxis`, `alacritty`, `kitty`, etc., and ensured `WAYLAND_SOCKET` is always stripped in `desktopIconsUtil.js`.
+  * **Desktop Grid Controller Typo**: Fixed typo in `desktopGrid.js` where `buttonMenuController.propagation_phase` was set twice instead of setting `buttonMainController.propagation_phase = Gtk.PropagationPhase.BUBBLE`.
+  * **Thumbnail Generation Queue Stalling**: Wrapped `save_thumbnail_finish` in try/catch in `thumbnails.js` to prevent the asynchronous thumbnail processing queue from permanently stalling if saving fails.
+  * **Window Border Unhandled Rejections**: Wrapped `_computeBorderRadius` in try/catch and caught screenshot promises in `windowBorder.js` to eliminate unhandled promise rejections on window closure.
+  * **GlobalState Empty Layout Fallbacks**: Guarded `this._layouts[0]?.id` in `globalState.js` against empty layout lists during workspace additions and validation.
+
+## [1.0.5] - 2026-10-26
+
+### Changed
+* **Animations**:
+  * Disabled animations across tiling transitions, snap assistant, tile previews, window borders, and suggestions for instantaneous response and maximum performance.
+  * Default animation durations set to 0 in GSettings schemas and runtime state.
+  * System-wide GNOME animations disabled via `org.gnome.desktop.interface enable-animations false`.
+
+### Fixed
+* **Desktop icons (DING) on Wayland / GNOME 50**:
+  * Replaced `global.display.list_windows()` with `(global.display.list_all_windows?.() ?? [])` in `emulateX11WindowType.js`, fixing fatal TypeError on startup and restoring desktop icons.
+  * Corrected argument vector slicing in `ding.js` command line handler.
+  * Added out-of-bounds slot checks in dynamic tiling `reflow.js` to prevent undefined access crashes.
+  * Fixed window signal double-disconnect in `raiseTogetherManager.js` eliminating GLib-GObject critical errors.
+* **Shell Compatibility & Signal Leaks**:
+  * Fixed `skipNextEffect` in `gnomesupport.js`: resolved window manager via `Main.wm ?? global.window_manager` instead of non-existent `global.main?.wm`.
+  * Fixed `getSelectedLayoutOfMonitor` in `globalState.js` returning string instead of array on workspace fallback.
+  * Fixed `overriddenWindowMenu.js` missing null fallback for layout `tiles`.
+  * Added null guards for `_switcherList` in `overriddenAltTab.js`.
+  * Guarded `selectedLay` and clamped `_selectedIndex >= 0` in `layoutSwitcher.js`.
+  * Scoped adjacent complementary resizing in `resizeManager.js` to the window's own workspace and monitor.
+  * Guarded against duplicate signal connections per window in `raiseTogetherManager.js`.
+  * Tracked `first-frame` window signals via `this._signals` in `tilingManager.js` and `windowBorder.js` preventing signal leaks.
+
+## [1.0.4] - 2026-10-25
+
+### Fixed
+
+* **Desktop icons (DING)**:
+  * App-ID filtering for bundled desktop windows now matches the actual
+    `_isDingWindow()` helper instead of the old ad-hoc test.
+  * The subprocess is launched with the Wayland-safe `gjs` path, with a
+    fallback when the preferred launcher is unavailable.
+  * An already-running X11 DING process is adopted instead of being ignored.
+  * Shutdown now escalates from `SIGTERM` to `SIGKILL` after a timeout, so a
+    wedged child cannot survive an extension disable.
+  * Visible-area bookkeeping is cleared when monitors are removed or
+    rearranged.
+* **Tiling**:
+  * The drag-to-restore threshold now compares squared distances against a
+    squared threshold; the old code compared squared distance with a linear
+    one, so the threshold was far too large.
+  * Per-window IDs now come from a monotonic counter instead of
+    `WeakMap.size`, which could reuse IDs after windows were collected.
+  * `_autoTile()` validates the window before reading its monitor, avoiding a
+    null dereference during workspace changes.
+* **Lifecycle and signals**:
+  * The focus-switch keybinding guards against a focused window that is absent
+    from the filtered list (including an empty list).
+  * A fresh install keeps the border colour chosen by `_onInstall()`; the
+    upgrade migration no longer overwrites it.
+  * Extension-level signals are disconnected before the indicator is destroyed,
+    preventing "already disposed" warnings.
+  * Keybinding, indicator and border-accent signal handlers are disconnected
+    on disable.
+* **Build and documentation**:
+  * `make install` no longer reverts the freshly built ZIP with
+    `git checkout`.
+  * The installer checks for the `GnomeDesktop-4.0` typelib used by desktop
+    thumbnails.
+  * Corrected stale version, translation-count and tooling references in
+    `REVIEW.md`, and removed the local audit scratch files.
+
 ## [1.0.3] - 2026-10-24
 
 ### Fixed

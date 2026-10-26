@@ -44,8 +44,17 @@ jobs:
       - name: Verify the dynamic-layout cache
         run: node verify_perf.mjs
 
+      - name: Verify the DING desktop refresh
+        run: node verify_ding_refresh.mjs
+
       - name: Verify that every audit claim is resolved
         run: node verify_claims.mjs
+
+      - name: Verify pin handling
+        run: node verify_pins.mjs
+
+      - name: Check dynamic-layout math
+        run: node test_dyn.mjs
 
       - name: Build the resource bundle
         run: |

@@ -9,11 +9,25 @@ function buildLayoutTree(tiles) {
       ...new Set(tiles.map((t) => t[axis] + t[extent]))
     ].sort((a, b) => a - b);
     for (const at of candidates) {
-      const before = tiles.filter(
-        (t) => t[axis] + t[extent] <= at + EPSILON
-      );
-      const after = tiles.filter((t) => t[axis] >= at - EPSILON);
-      if (before.length + after.length !== tiles.length) continue;
+      // The tiles are split into the two halves in one pass. Filtering the
+      // whole list twice for every candidate made this quadratic in the
+      // number of tiles, and the tree is rebuilt on every layout change.
+      const before = [];
+      const after = [];
+      let straddles = false;
+      for (const tile of tiles) {
+        if (tile[axis] + tile[extent] <= at + EPSILON)
+          before.push(tile);
+        else if (tile[axis] >= at - EPSILON)
+          after.push(tile);
+        else {
+          // The tile straddles the split, so this candidate does not
+          // divide the layout cleanly.
+          straddles = true;
+          break;
+        }
+      }
+      if (straddles) continue;
       if (before.length === 0 || after.length === 0) continue;
       const first = buildLayoutTree(before);
       if (!first) continue;

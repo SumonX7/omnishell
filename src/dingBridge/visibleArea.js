@@ -78,10 +78,10 @@ const _VisibleArea = class _VisibleArea extends GObject.Object {
    * Returns the margin and geometry values for a specific monitor.
    */
   getMonitorGeometry(ws, monitorIndex) {
-    const display = ws.get_display();
+    const display = ws?.get_display?.() || global.display;
     const geometry = display.get_monitor_geometry(monitorIndex);
     const scale = display.get_monitor_scale(monitorIndex);
-    const area = ws.get_work_area_for_monitor(monitorIndex);
+    const area = ws?.get_work_area_for_monitor?.(monitorIndex) || Main.layoutManager.getWorkAreaForMonitor(monitorIndex);
     let marginTop = area.y - geometry.y;
     let marginLeft = area.x - geometry.x;
     let marginRight = geometry.width - area.width - marginLeft;

@@ -7,6 +7,18 @@
  */
 import { Meta } from "../gi/ext.js";
 import { isManagedWindow } from "../dingBridge/dingWindowRegistry.js";
+import { DING_APP_ID, DING_APP_ID_TEST } from "../app/dingBusNames.js";
+import { getDingBridge } from "../dingBridge/dingBridgeAccess.js";
+
+// The bundled engine uses OmniShell-specific ids; the rastersoft ids are
+// kept for compatibility with a separately installed upstream DING.
+const DING_APP_IDS = new Set([
+  DING_APP_ID,
+  DING_APP_ID_TEST,
+  "com.rastersoft.ding",
+  "com.rastersoft.dingtest",
+  "ding"
+]);
 
 function isDesktopWindow(window) {
   if (!window) return false;
@@ -16,32 +28,33 @@ function isDesktopWindow(window) {
     }
   } catch {
   }
-  try {
-    const title = window.get_title();
-    if (title) {
-      // The title is only used as a *secondary* signal. The authoritative
-      // check is the window type and the WM class below; a title alone must
-      // never mark an ordinary application as a desktop window, because any
-      // app can name its window "Desktop Icons ...".
-      if (title === "DING") {
-        return true;
-      }
-    }
-  } catch {
+  if (isManagedWindow(window)) {
+    return true;
   }
   try {
     const wmClass = window.get_wm_class();
-    if (wmClass === "com.rastersoft.ding" || wmClass === "ding") {
+    if (wmClass && (DING_APP_IDS.has(wmClass) || wmClass.includes("ding"))) {
       return true;
     }
     const gtkId = window.get_gtk_application_id();
-    if (gtkId === "com.rastersoft.ding" || gtkId === "ding") {
+    if (gtkId && (DING_APP_IDS.has(gtkId) || gtkId.includes("ding"))) {
       return true;
     }
   } catch {
   }
-  if (isManagedWindow(window)) {
-    return true;
+  try {
+    const bridge = getDingBridge();
+    if (bridge?.query_window_belongs_to?.(window)) {
+      return true;
+    }
+  } catch {
+  }
+  try {
+    const title = window.get_title();
+    if (title === "DING" || (title && title.startsWith("DING "))) {
+      return true;
+    }
+  } catch {
   }
   return false;
 }

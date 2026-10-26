@@ -5,12 +5,15 @@
  * background canvases under Wayland and X11 without being treated as normal windows.
  */
 import { GLib, Meta } from "../gi/ext.js";
+import { DING_APP_ID, DING_APP_ID_TEST } from "../app/dingBusNames.js";
 import {
   getManagedWindow,
   isManagedWindow,
   setManagedWindow,
   takeManagedWindow
 } from "./dingWindowRegistry.js";
+
+const DING_APPLICATION_IDS = new Set([DING_APP_ID, DING_APP_ID_TEST]);
 
 class ManageWindow {
   _window;
@@ -41,6 +44,16 @@ class ManageWindow {
     this._signalIDs.push(
       window.connect("notify::title", () => {
         this._parseTitle();
+      })
+    );
+    this._signalIDs.push(
+      window.connect("raised", () => {
+        if (this._fixed) {
+          try {
+            this._window?.lower();
+          } catch {
+          }
+        }
       })
     );
     this._parseTitle();
@@ -129,6 +142,7 @@ class ManageWindow {
       }
       if (title.startsWith("Desktop Icons ")) {
         this._keepAtTop = false;
+        this._showInAllDesktops = true;
         this._fixed = true;
         try {
           const desktopIndex = parseInt(title.substring(14).trim(), 10);
@@ -142,6 +156,10 @@ class ManageWindow {
         }
         try {
           this._window.set_type(Meta.WindowType.DESKTOP);
+        } catch {
+        }
+        try {
+          this._window.lower();
         } catch {
         }
       }
@@ -187,24 +205,50 @@ class EmulateX11WindowType {
     }
   }
 
+  /**
+   * Whether this window belongs to the bundled DING process.
+   *
+   * On Wayland the spawned client can be asked directly. On X11 there is no
+   * `Meta.WaylandClient`, so the GTK application id is used: it is set by the
+   * DING process itself and cannot be spoofed by a window title.
+   */
+  _isDingWindow(window) {
+    if (this._waylandClient && this._waylandClient.query_window_belongs_to(window)) {
+      return true;
+    }
+    try {
+      const gtkId = window.get_gtk_application_id?.();
+      if (gtkId && DING_APPLICATION_IDS.has(gtkId)) {
+        return true;
+      }
+      const wmClass = window.get_wm_class?.();
+      if (wmClass && DING_APPLICATION_IDS.has(wmClass)) {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
   enable() {
     global.display.connectObject(
       "window-created",
       (_, window) => {
-        // A window is only treated as a DING desktop canvas when the
-        // Wayland client that we spawned claims it.
-        //
-        // The previous test also accepted any window whose *title* started
-        // with "Desktop Icons ", which is a spoofing primitive: an ordinary
-        // application could name its window that way and would then be
-        // retyped as Meta.WindowType.DESKTOP, escaping the tiling manager
-        // and the window switcher.
-        if (this._waylandClient?.query_window_belongs_to(window)) {
+        if (this._isDingWindow(window)) {
           this.addWindow(window);
         }
       },
       this
     );
+    // On X11 the DING process can already be running when the bridge is
+    // re-enabled, so adopt its existing windows as well.
+    const existingWindows = global.display.list_all_windows?.() ?? [];
+    for (const window of existingWindows) {
+      if (this._isDingWindow(window)) {
+        this.addWindow(window);
+      }
+    }
   }
 
   disable() {
@@ -221,6 +265,7 @@ class EmulateX11WindowType {
 
   addWindow(window) {
     if (isManagedWindow(window)) return;
+    this._waylandClient?.cancelTimer?.();
     const manageWindow = new ManageWindow(window, this._waylandClient, this);
     setManagedWindow(window, manageWindow);
     this._windowList.push(window);

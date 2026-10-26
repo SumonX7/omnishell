@@ -12,7 +12,7 @@ import SuggestionsTilePreview from "../../components/windowsSuggestions/suggesti
 import TilingShellWindowManager from "../../components/windowManager/tilingShellWindowManager.js";
 import { getEventCoords, unmaximizeWindow } from "../../utils/gnomesupport.js";
 import TouchEventHelper from "../../utils/touch.js";
-const ANIMATION_SPEED = 200;
+const ANIMATION_SPEED = 0;
 const MASONRY_LAYOUT_ROW_HEIGHT = 0.31;
 const _TilingLayoutWithSuggestions = class _TilingLayoutWithSuggestions extends LayoutWidget {
   _signals;
@@ -121,21 +121,24 @@ const _TilingLayoutWithSuggestions = class _TilingLayoutWithSuggestions extends 
     const clones = nontiledWindows.map((nonTiledWin) => {
       const winClone = new SuggestedWindowPreview(nonTiledWin);
       const winActor = nonTiledWin.get_compositor_private();
-      winActor.set_pivot_point(0.5, 0.5);
-      if (!nonTiledWin.minimized) {
-        winActor.ease({
-          opacity: 0,
-          duration: ANIMATION_SPEED,
-          scaleX: 0.9,
-          scaleY: 0.9,
-          mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-          onComplete: () => {
-            winActor.hide();
-            winActor.set_pivot_point(0, 0);
-          }
-        });
+      if (winActor) {
+        winActor.set_pivot_point(0.5, 0.5);
+        if (!nonTiledWin.minimized) {
+          winActor.ease({
+            opacity: 0,
+            duration: ANIMATION_SPEED,
+            scaleX: 0.9,
+            scaleY: 0.9,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            onComplete: () => {
+              winActor.hide();
+              winActor.set_pivot_point(0, 0);
+            }
+          });
+        }
       }
       winClone.connect("destroy", () => {
+        if (!winActor) return;
         if (nonTiledWin.minimized) {
           winActor.set_pivot_point(0, 0);
           return;

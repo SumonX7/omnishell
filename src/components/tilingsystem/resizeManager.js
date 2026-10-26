@@ -82,8 +82,8 @@ class ResizingManager {
         break;
     }
     if (!verticalSide[0] && !horizontalSide[0]) return;
-    const otherTiledWindows = getWindows().filter(
-      (otherWindow) => otherWindow && otherWindow.assignedTile && otherWindow !== window && !otherWindow.minimized
+    const otherTiledWindows = getWindows(window.get_workspace()).filter(
+      (otherWindow) => otherWindow && otherWindow.assignedTile && otherWindow !== window && !otherWindow.minimized && otherWindow.get_monitor() === window.get_monitor()
     );
     if (otherTiledWindows.length === 0) return;
     const verticalAdjacentWindows = verticalSide[0] ? this._findAdjacent(
@@ -251,13 +251,16 @@ class ResizingManager {
         } else if (verticalSide === St.Side.BOTTOM) {
           rect[3] = otherWindowRect.height + (isSameVerticalSide ? resizedRect.height : resizedRect.y);
         }
-        otherWindow.move_resize_frame(
-          false,
-          Math.max(0, rect[0]),
-          Math.max(0, rect[1]),
-          Math.max(0, rect[2]),
-          Math.max(0, rect[3])
-        );
+        if (!otherWindow || !otherWindow.get_compositor_private()) return;
+        try {
+          otherWindow.move_resize_frame(
+            false,
+            Math.max(0, rect[0]),
+            Math.max(0, rect[1]),
+            Math.max(0, rect[2]),
+            Math.max(0, rect[3])
+          );
+        } catch {}
       }
     );
   }

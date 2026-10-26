@@ -5,9 +5,6 @@ class ReflowScheduler {
 
   _running = false;
   _pending = false;
-  get isRunning() {
-    return this._running;
-  }
 
   run(reflow) {
     if (this._running) {

@@ -110,9 +110,21 @@ function getTransientOrParent(window) {
 }
 
 function filterUnfocusableWindows(windows) {
-  return windows.map(getTransientOrParent).filter((win, idx, arr) => {
-    return win !== null && !win.skipTaskbar && arr.indexOf(win) === idx;
-  });
+  // The windows are de-duplicated with a set rather than by searching the
+  // array for each window's first occurrence, which made this quadratic
+  // in the number of windows.
+  const seen = /* @__PURE__ */ new Set();
+  const result = [];
+  for (const window of windows) {
+    const win = getTransientOrParent(window);
+    if (win === null) continue;
+    if (win.skipTaskbar) continue;
+    if (isDesktopWindow(win)) continue;
+    if (seen.has(win)) continue;
+    seen.add(win);
+    result.push(win);
+  }
+  return result;
 }
 
 function isWindowAlive(window) {

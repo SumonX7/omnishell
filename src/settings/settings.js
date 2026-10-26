@@ -590,9 +590,13 @@ class Settings {
       return layouts.filter((layout) => layout.tiles.length > 0);
     } catch (_unused) {
       this.reset_layouts_json();
-      return JSON.parse(
-        this._settings?.get_string(this.KEY_SETTING_LAYOUTS_JSON) || "[]"
-      );
+      try {
+        return JSON.parse(
+          this._settings?.get_string(this.KEY_SETTING_LAYOUTS_JSON) || "[]"
+        );
+      } catch {
+        return [];
+      }
     }
   }
 

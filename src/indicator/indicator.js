@@ -105,9 +105,10 @@ const _Indicator = class _Indicator extends PanelMenu.Button {
     if (this._layoutEditor) {
       this._layoutEditor.layout = newLayout;
     } else {
+      const primaryMon = Main.layoutManager.primaryMonitor ?? Main.layoutManager.monitors[Main.layoutManager.primaryIndex] ?? Main.layoutManager.monitors[0];
       this._layoutEditor = new LayoutEditor(
         newLayout,
-        Main.layoutManager.monitors[Main.layoutManager.primaryIndex],
+        primaryMon,
         this._enableScaling
       );
     }
@@ -143,9 +144,10 @@ const _Indicator = class _Indicator extends PanelMenu.Button {
         if (this._layoutEditor) {
           this._layoutEditor.layout = layCopy;
         } else {
+          const primaryMon = Main.layoutManager.primaryMonitor ?? Main.layoutManager.monitors[Main.layoutManager.primaryIndex] ?? Main.layoutManager.monitors[0];
           this._layoutEditor = new LayoutEditor(
             layCopy,
-            Main.layoutManager.monitors[Main.layoutManager.primaryIndex],
+            primaryMon,
             this._enableScaling
           );
         }
@@ -227,6 +229,10 @@ const _Indicator = class _Indicator extends PanelMenu.Button {
   }
 
   _onDestroy() {
+    if (this._keyPressEvent) {
+      global.stage.disconnect(this._keyPressEvent);
+      this._keyPressEvent = null;
+    }
     this._editorDialog?.destroy();
     this._editorDialog = null;
     this._layoutEditor?.destroy();

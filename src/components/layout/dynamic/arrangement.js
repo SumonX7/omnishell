@@ -36,14 +36,47 @@ function arrangementKeys(tree) {
   return leaves(tree).map((leaf) => leaf.key);
 }
 
+/**
+ * The rectangle of one leaf, by its key.
+ *
+ * This searches the leaf list, so it costs a walk of the tree per lookup.
+ * When the rectangles of many leaves are needed, `arrangementRects` is
+ * the one to use.
+ */
 function arrangementRectOf(tree, key) {
   return leaves(tree).find((leaf) => leaf.key === key)?.tile ?? null;
 }
 
+/**
+ * Every leaf's rectangle, keyed by the leaf's key, in a single walk of the
+ * tree.
+ *
+ * The rectangles of every window of a workspace are needed at once, and
+ * searching the leaf list for each of them in turn means a walk of the
+ * whole tree per window. They are collected into a map here instead — one
+ * walk, then a constant-time lookup each.
+ */
+function arrangementRects(tree) {
+  const rects = /* @__PURE__ */ new Map();
+  const walk = (node) => {
+    if (node.kind === "leaf") {
+      rects.set(node.key, node.tile);
+      return;
+    }
+    walk(node.first);
+    walk(node.second);
+  };
+  walk(tree);
+  return rects;
+}
+
 function insertIntoArrangement(tree, at, key) {
   let target = at;
-  if (target === void 0 || arrangementRectOf(tree, target) === null) {
-    const all = leaves(tree);
+  // The leaves are collected once and used for both the membership test
+  // and the fallback pick, rather than walking the tree separately for
+  // each of them.
+  const all = leaves(tree);
+  if (target === void 0 || !all.some((leaf) => leaf.key === target)) {
     target = all[slotOrder(all.map((leaf) => leaf.tile))[0]].key;
   }
   const cut = (node) => {
@@ -96,6 +129,7 @@ function swapInArrangement(tree, a, b) {
 export {
   arrangementKeys,
   arrangementRectOf,
+  arrangementRects,
   buildArrangement,
   insertIntoArrangement,
   swapInArrangement

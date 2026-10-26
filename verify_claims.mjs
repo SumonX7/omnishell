@@ -181,9 +181,11 @@ const check = (id, claim, verdict, evidence) => {
   const s = read('dingBridge/emulateX11WindowType.js');
   const spoof = /startsWith\("Desktop Icons "\)/.test(s);
   // The title is still parsed (to read the desktop index), but the window
-  // only ever *reaches* that code through the client check, so the guard
-  // lives at the call site rather than next to the title test.
-  const guarded = /query_window_belongs_to\(window\)\)\s*\{[^}]*this\.addWindow\(window\)/.test(s);
+  // only ever *reaches* that code through `_isDingWindow()`. That helper
+  // checks the Wayland client first and falls back to the DING app id on
+  // X11, so the title is never the sole discriminator.
+  const guarded = /query_window_belongs_to\(window\)/.test(s) &&
+    /_isDingWindow\(window\)[\s\S]{0,120}?this\.addWindow\(window\)/.test(s);
   check('D-6', 'Window type forced by title prefix alone (spoofing primitive)',
     spoof && !guarded ? 'CONFIRMED' : 'REFUTED',
     `title check present=${spoof}, properly guarded by query_window_belongs_to=${guarded}`);

@@ -96,7 +96,7 @@ export var DesktopGrid = class extends SignalManager.SignalManager {
         });
 
         const buttonMainController = new Gtk.GestureClick();
-        buttonMenuController.propagation_phase = Gtk.PropagationPhase.BUBBLE;
+        buttonMainController.propagation_phase = Gtk.PropagationPhase.BUBBLE;
         buttonMainController.button = 1;
         this._container.add_controller(buttonMainController);
         this.connectSignal(buttonMainController, 'pressed', (controller, nPress, x, y) => {
@@ -136,34 +136,37 @@ export var DesktopGrid = class extends SignalManager.SignalManager {
     }
 
     updateWindowGeometry() {
-        this._zoom = this._desktopDescription.scaleFactor;
-        this._x = this._desktopDescription.x + this._desktopDescription.windowMarginLeft;
-        this._y = this._desktopDescription.y + this._desktopDescription.windowMarginTop;
-        this._monitor = this._desktopDescription.monitorIndex;
-        this._size_divisor = this._zoom;
+        this._zoom = this._desktopDescription.scaleFactor || 1;
+        this._x = (this._desktopDescription.x || 0) + (this._desktopDescription.windowMarginLeft || 0);
+        this._y = (this._desktopDescription.y || 0) + (this._desktopDescription.windowMarginTop || 0);
+        this._monitor = this._desktopDescription.monitorIndex || 0;
+        this._size_divisor = Math.max(1, this._zoom);
 
-        this._windowWidth = Math.floor((this._desktopDescription.width - (this._desktopDescription.windowMarginRight + this._desktopDescription.windowMarginLeft)) / this._size_divisor);
-        this._windowHeight = Math.floor((this._desktopDescription.height - (this._desktopDescription.windowMarginTop + this._desktopDescription.windowMarginBottom)) / this._size_divisor);
+        const rawWidth = (this._desktopDescription.width || 1920) - ((this._desktopDescription.windowMarginRight || 0) + (this._desktopDescription.windowMarginLeft || 0));
+        const rawHeight = (this._desktopDescription.height || 1080) - ((this._desktopDescription.windowMarginTop || 0) + (this._desktopDescription.windowMarginBottom || 0));
+
+        this._windowWidth = Math.max(1, Math.floor(rawWidth / this._size_divisor));
+        this._windowHeight = Math.max(1, Math.floor(rawHeight / this._size_divisor));
     }
 
     updateUnscaledHeightWidthMargins() {
-        this._marginTop = this._desktopDescription.marginTop - this._desktopDescription.windowMarginTop;
-        this._marginBottom = this._desktopDescription.marginBottom - this._desktopDescription.windowMarginBottom;
-        this._marginLeft = this._desktopDescription.marginLeft - this._desktopDescription.windowMarginLeft;
-        this._marginRight = this._desktopDescription.marginRight - this._desktopDescription.windowMarginRight;
-        this._width = this._desktopDescription.width - this._desktopDescription.marginLeft - this._desktopDescription.marginRight;
-        this._height = this._desktopDescription.height - this._desktopDescription.marginTop - this._desktopDescription.marginBottom;
+        this._marginTop = (this._desktopDescription.marginTop || 0) - (this._desktopDescription.windowMarginTop || 0);
+        this._marginBottom = (this._desktopDescription.marginBottom || 0) - (this._desktopDescription.windowMarginBottom || 0);
+        this._marginLeft = (this._desktopDescription.marginLeft || 0) - (this._desktopDescription.windowMarginLeft || 0);
+        this._marginRight = (this._desktopDescription.marginRight || 0) - (this._desktopDescription.windowMarginRight || 0);
+        this._width = Math.max(1, (this._desktopDescription.width || 1920) - (this._desktopDescription.marginLeft || 0) - (this._desktopDescription.marginRight || 0));
+        this._height = Math.max(1, (this._desktopDescription.height || 1080) - (this._desktopDescription.marginTop || 0) - (this._desktopDescription.marginBottom || 0));
 
-        this._width = Math.floor(this._width / this._size_divisor);
-        this._height = Math.floor(this._height / this._size_divisor);
+        this._width = Math.max(1, Math.floor(this._width / this._size_divisor));
+        this._height = Math.max(1, Math.floor(this._height / this._size_divisor));
         this._marginTop = Math.floor(this._marginTop / this._size_divisor);
         this._marginBottom = Math.floor(this._marginBottom / this._size_divisor);
         this._marginLeft = Math.floor(this._marginLeft / this._size_divisor);
         this._marginRight = Math.floor(this._marginRight / this._size_divisor);
-        this._maxColumns = Math.floor(this._width / (Prefs.getDesiredWidth() + 4 * elementSpacing));
-        this._maxRows = Math.floor(this._height / (Prefs.getDesiredHeight() + 4 * elementSpacing));
-        this._elementWidth = Math.floor(this._width / this._maxColumns);
-        this._elementHeight = Math.floor(this._height / this._maxRows);
+        this._maxColumns = Math.max(1, Math.floor(this._width / (Prefs.getDesiredWidth() + 4 * elementSpacing)));
+        this._maxRows = Math.max(1, Math.floor(this._height / (Prefs.getDesiredHeight() + 4 * elementSpacing)));
+        this._elementWidth = Math.max(1, Math.floor(this._width / this._maxColumns));
+        this._elementHeight = Math.max(1, Math.floor(this._height / this._maxRows));
     }
 
     updateGridRectangle() {
@@ -346,7 +349,7 @@ export var DesktopGrid = class extends SignalManager.SignalManager {
         if (this._coordinatesBelongToThisGrid(x, y))
             return 0;
 
-        return Math.pow(x - (this._x + this._windowWidth * this._zoom / 2), 2) + Math.pow(x - (this._y + this._windowHeight * this._zoom / 2), 2);
+        return Math.pow(x - (this._x + this._windowWidth * this._zoom / 2), 2) + Math.pow(y - (this._y + this._windowHeight * this._zoom / 2), 2);
     }
 
     coordinatesGlobalToLocal(X, Y) {

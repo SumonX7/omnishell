@@ -28,19 +28,6 @@ class TileUtils {
     });
   }
 
-  static apply_props_relative_to(tile, container) {
-    const x = Math.round(container.width * tile.x);
-    const y = Math.round(container.height * tile.y);
-    const right = Math.round(container.width * (tile.x + tile.width));
-    const bottom = Math.round(container.height * (tile.y + tile.height));
-    return buildRectangle({
-      x,
-      y,
-      width: Math.max(0, right - x),
-      height: Math.max(0, bottom - y)
-    });
-  }
-
   static build_tile(rect, container) {
     return new Tile({
       x: (rect.x - container.x) / container.width,

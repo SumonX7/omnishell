@@ -46,14 +46,14 @@ const _LayoutSwitcherList = class _LayoutSwitcherList extends SwitcherPopup.Swit
   }
 
   highlight(index, justOutline) {
-    this._buttons[index].set_checked(true);
+    this._buttons[index]?.set_checked(true);
     super.highlight(index, justOutline);
-    this._items[this._highlighted].remove_style_pseudo_class("outlined");
-    this._items[this._highlighted].remove_style_pseudo_class("selected");
+    this._items[this._highlighted]?.remove_style_pseudo_class("outlined");
+    this._items[this._highlighted]?.remove_style_pseudo_class("selected");
   }
 
   unhighlight(index) {
-    this._buttons[index].set_checked(false);
+    this._buttons[index]?.set_checked(false);
   }
 };
 registerGObjectClass(_LayoutSwitcherList);
@@ -83,8 +83,9 @@ const _LayoutSwitcherPopup = class _LayoutSwitcherPopup extends SwitcherPopup.Sw
       global.workspaceManager.get_active_workspace_index()
     );
     this._selectedIndex = GlobalState.get().layouts.findIndex(
-      (lay) => lay.id === selectedLay.id
+      (lay) => lay.id === selectedLay?.id
     );
+    if (this._selectedIndex < 0) this._selectedIndex = 0;
     if (backward) this._select(this._previous());
     else this._select(this._next());
   }
@@ -105,6 +106,7 @@ const _LayoutSwitcherPopup = class _LayoutSwitcherPopup extends SwitcherPopup.Sw
 
   _finish(timestamp) {
     super._finish(timestamp);
+    if (this._selectedIndex < 0 || !this._items[this._selectedIndex]) return;
     GlobalState.get().setSelectedLayoutOfMonitor(
       this._items[this._selectedIndex].id,
       this._getCurrentMonitorIndex()
@@ -113,8 +115,9 @@ const _LayoutSwitcherPopup = class _LayoutSwitcherPopup extends SwitcherPopup.Sw
 
   _getCurrentMonitorIndex() {
     const focusWindow = global.display.focus_window;
-    if (focusWindow) return focusWindow.get_monitor();
-    return Main.layoutManager.primaryIndex;
+    if (focusWindow && focusWindow.get_monitor() >= 0) return focusWindow.get_monitor();
+    const primary = Main.layoutManager.primaryIndex;
+    return primary >= 0 ? primary : 0;
   }
 };
 registerGObjectClass(_LayoutSwitcherPopup);

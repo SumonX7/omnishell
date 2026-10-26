@@ -9,10 +9,12 @@ class WindowBorderManager {
   _border;
   _enableScaling;
   _interfaceSettings;
+  _accentColorId;
   constructor(enableScaling) {
     this._signals = new SignalHandling();
     this._border = null;
     this._enableScaling = enableScaling;
+    this._accentColorId = 0;
     this._interfaceSettings = new Gio.Settings({
       schema_id: "org.gnome.desktop.interface"
     });
@@ -47,7 +49,11 @@ class WindowBorderManager {
       Settings.KEY_WINDOW_USE_CUSTOM_BORDER_COLOR,
       () => this._border?.updateStyle()
     );
-    this._interfaceSettings.connect(
+    if (this._accentColorId) {
+      this._interfaceSettings.disconnect(this._accentColorId);
+      this._accentColorId = 0;
+    }
+    this._accentColorId = this._interfaceSettings.connect(
       "changed::accent-color",
       () => this._border?.updateStyle()
     );
@@ -65,6 +71,10 @@ class WindowBorderManager {
 
   destroy() {
     this._signals.disconnect();
+    if (this._accentColorId) {
+      this._interfaceSettings.disconnect(this._accentColorId);
+      this._accentColorId = 0;
+    }
     this._border?.destroy();
     this._border = null;
   }

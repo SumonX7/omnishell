@@ -73,7 +73,7 @@ function assign(tree, windowCount, splitSlot) {
   const nominated = splitSlot !== void 0 && splitSlot >= 0 && splitSlot < windowCount ? splitSlot : void 0;
   while (slots.length < windowCount) {
     let target = slots.length === windowCount - 1 ? nominated : void 0;
-    if (target === void 0) {
+    if (target === void 0 || target >= slots.length) {
       target = 0;
       for (let i = 1; i < slots.length; i++) {
         if (areaOf(slots[i]) > areaOf(slots[target])) target = i;
@@ -153,7 +153,6 @@ function slotUnderPoint(rects, workArea, point) {
 }
 export {
   assign,
-  boundsOf,
   leavesOf,
   neighbourIndex,
   reflow,

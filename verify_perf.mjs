@@ -260,6 +260,48 @@ const check = (id, description, ok, evidence) => {
     `recomputations over 100 ticks = ${recomputations}`);
 }
 
+// ---------------------------------------------------------------------------
+// 8. New-window reflows are queued, so a burst of windows produces one pass.
+// ---------------------------------------------------------------------------
+{
+  const s = read('components/tilingsystem/tilingManager.js');
+  const addBlock = /_dynamicAdd\(window\) \{[\s\S]{0,2200}?\n  \}/.exec(s)?.[0] ?? '';
+  const queued = /this\._queueDynamicReflow\(\)/.test(addBlock);
+  const directCalls = (s.match(/this\._applyDynamicTiling\(\)/g) || []).length;
+  check('P4-BATCH', 'new windows are batched through the idle reflow queue',
+    queued && directCalls === 1,
+    `new-window-queued=${queued}, direct-apply-calls=${directCalls}`);
+}
+
+// ---------------------------------------------------------------------------
+// 9. The drag-tick cache key does not read GSettings on every tick.
+// ---------------------------------------------------------------------------
+{
+  const s = read('components/tilingsystem/tilingManager.js');
+  const keyBlock = /_dynamicSlotsKey\(ws, windows, tree, focused, layoutId\) \{[\s\S]{0,2000}?\n  \}/.exec(s)?.[0] ?? '';
+  const cached = /String\(this\._innerGapValue\)/.test(keyBlock) &&
+    /String\(this\._outerGapValue\)/.test(keyBlock);
+  const noSettingsRead = !/Settings\.(INNER_GAPS|OUTER_GAPS)/.test(keyBlock);
+  const refreshed = /this\._innerGapValue = Settings\.INNER_GAPS/.test(s) &&
+    /this\._outerGapValue = Settings\.OUTER_GAPS/.test(s);
+  check('P4-GAPS', 'the slots cache key uses cached gaps instead of reading GSettings per tick',
+    cached && noSettingsRead && refreshed,
+    `cached=${cached}, no-settings-read=${noSettingsRead}, refreshed=${refreshed}`);
+}
+
+// ---------------------------------------------------------------------------
+// 10. A move-only placement does not arm a drift watch it cannot defend.
+// ---------------------------------------------------------------------------
+{
+  const s = read('components/tilingsystem/windowPlacer.js');
+  const flag = /watchDrift: nudge \|\| !sizeEquals\(before, request\)/.test(s);
+  const guard = /if \(!watchDrift\) return;/.test(s);
+  const bounded = /maxDriftRetries/.test(s);
+  check('P4-DRIFT', 'the drift watch is only armed when a size was requested, and stays bounded',
+    flag && guard && bounded,
+    `watch-only-on-resize=${flag}, guarded=${guard}, bounded=${bounded}`);
+}
+
 // ==== OUTPUT ====
 const ok = results.filter(r => r.ok);
 const bad = results.filter(r => !r.ok);

@@ -160,7 +160,10 @@ node check_syntax.mjs              # syntax check every source file
 node verify_fixes.mjs              # the fix checks
 node verify_round2.mjs             # the SortOrder round-trip checks
 node verify_perf.mjs               # the dynamic-layout cache checks
+node verify_ding_refresh.mjs       # the DING refresh checks (24)
 node verify_claims.mjs             # re-tests every original audit claim
+node verify_pins.mjs               # pin/livelock handling checks
+node test_dyn.mjs                  # dynamic-layout math checks
 ```
 
 All of them also run automatically in CI on every push and pull request —
@@ -221,8 +224,9 @@ journalctl --user -f | grep -i omnishell
 ```
 
 **The icons are missing from the desktop.**
-The desktop-icons feature needs `gjs` plus the GTK 4 and libadwaita
-typelibs. The installer checks for them and warns if they are missing.
+The desktop-icons feature needs `gjs` plus the GTK 4, libadwaita and
+`GnomeDesktop-4.0` typelibs. The installer checks for them and warns if they
+are missing.
 
 ---
 

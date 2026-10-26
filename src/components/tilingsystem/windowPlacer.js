@@ -14,9 +14,15 @@ class WindowPlacer {
       monitorIndex: 0,
       settleTimeoutMs: 300,
       quietMs: 40,
-      animationMs: 250,
+      animationMs: 0,
       retryDelaysMs: [200, 400, 600],
-      driftWatchMs: 1e4,
+      // How long a settled window is watched for a client that changes its
+      // mind about its size. Every watched window costs two signal
+      // connections and a timer, and after a reflow that is one set per
+      // window on screen. Three seconds catches the clients that resize
+      // themselves right after being placed without keeping the whole
+      // desktop under observation.
+      driftWatchMs: 3e3,
       // How many times a drifting client may be re-requested before the
       // placer gives up on it. Without this bound a client that keeps
       // changing its geometry re-arms the drift watch forever and the
@@ -58,7 +64,7 @@ class WindowPlacer {
         width: frame.width,
         height: frame.height
       };
-      this._request(target, hist, dest, request, frame, options, userOp);
+      this._request(target, hist, dest, request, frame, options, userOp, false, false, true);
       return "requested-move-only";
     }
     this._request(
@@ -89,7 +95,7 @@ class WindowPlacer {
     for (const target of [...this._inFlight]) this.forget(target);
   }
 
-  _request(target, hist, dest, request, before, options, userOp, nudge = false, fromDrift = false) {
+  _request(target, hist, dest, request, before, options, userOp, nudge = false, fromDrift = false, sizeOnly = false) {
     const earlierBefore = hist.pending?.before;
     if (hist.pending) this._cancelPending(hist);
     this._cancelVerification(hist);
@@ -102,6 +108,16 @@ class WindowPlacer {
       animate,
       fromDrift,
       onSettled: options.onSettled,
+      // True when the request asked for the size the window already has
+      // and only wanted it moved. A size change cannot then settle the
+      // placement, so the position-only fast path may skip reading the
+      // frame rect back.
+      sizeOnly,
+      // A drift watch only makes sense when this placement asked the
+      // client to change its size. A move-only placement did not, and
+      // watching it would cost a timer and two signal handlers per
+      // window for three seconds without a request to defend.
+      watchDrift: nudge || !sizeEquals(before, request),
       disconnectGeometry: () => {
       },
       disconnectGone: () => {
@@ -111,10 +127,27 @@ class WindowPlacer {
     };
     hist.pending = pending;
     this._inFlight.add(target);
-    pending.disconnectGeometry = target.onGeometryChanged(() => {
+    pending.disconnectGeometry = target.onGeometryChanged((change) => {
       if (hist.pending !== pending) return;
       if (target.isUserMaximized?.()) {
         this.forget(target);
+        return;
+      }
+      // A position-only change is reported at pointer rate while a window
+      // is dragged, and reading the frame rect back from mutter is not
+      // free. When the request only ever asked for a move — the size was
+      // already right — the position is the only thing that can have
+      // changed, and a size change cannot settle it.
+      if (change === "position" && pending.sizeOnly) {
+        if (pending.quiet !== null) this._clock.cancel(pending.quiet);
+        pending.quiet = this._clock.timeout(this._opts.quietMs, () => {
+          pending.quiet = null;
+          if (target.isUserMaximized?.()) {
+            this.forget(target);
+            return;
+          }
+          this._settle(target, hist, pending);
+        });
         return;
       }
       if (rectEquals(target.getFrameRect(), pending.dest)) {
@@ -159,7 +192,7 @@ class WindowPlacer {
     const frame = target.getFrameRect();
     hist.lastRequested = copyRect(pending.dest);
     hist.settledFrame = copyRect(frame);
-    if (pending.animate && !rectEquals(pending.before, frame)) {
+    if (pending.animate && this._opts.animationMs > 0 && !rectEquals(pending.before, frame)) {
       const actor = target.getActor();
       if (actor) {
         const before = pending.before;
@@ -181,7 +214,7 @@ class WindowPlacer {
     }
     const final = sizeEquals(frame, pending.dest) || !pending.fromDrift && hist.retries >= this._opts.retryDelaysMs.length;
     pending.onSettled?.(copyRect(pending.dest), copyRect(frame), final);
-    this._verify(target, hist, pending.dest, frame);
+    this._verify(target, hist, pending.dest, frame, pending.watchDrift);
   }
 
   /**
@@ -189,7 +222,7 @@ class WindowPlacer {
    * for, ask again a little later (bounded); once it has, keep an eye on it
    * for a while in case it changes its mind on its own.
    */
-  _verify(target, hist, dest, frame) {
+  _verify(target, hist, dest, frame, watchDrift = true) {
     const delays = this._opts.retryDelaysMs;
     if (!sizeEquals(frame, dest)) {
       if (hist.retries >= delays.length) return;
@@ -212,6 +245,7 @@ class WindowPlacer {
       });
       return;
     }
+    if (!watchDrift) return;
     if (this._opts.driftWatchMs <= 0) return;
     const watch = {
       disconnect: () => {
@@ -226,12 +260,17 @@ class WindowPlacer {
       this._cancelVerification(hist);
       this._inFlight.delete(target);
     };
-    watch.disconnect = target.onGeometryChanged(() => {
+    watch.disconnect = target.onGeometryChanged((change) => {
       if (hist.watch !== watch || hist.pending) return;
       if (target.isUserMaximized?.()) {
         stop();
         return;
       }
+      // Only a *size* drift matters here: the check below compares sizes,
+      // and a position change cannot alter a window's size. Position
+      // changes are reported at pointer rate during a drag, and reading
+      // the frame rect back from mutter for each of them is pure waste.
+      if (change === "position") return;
       if (sizeEquals(target.getFrameRect(), frame)) return;
       if (watch.quiet !== null) this._clock.cancel(watch.quiet);
       watch.quiet = this._clock.timeout(this._opts.quietMs, () => {
@@ -305,6 +344,5 @@ class WindowPlacer {
 }
 
 export {
-  WindowPlacer,
-  rectEquals
+  WindowPlacer
 };

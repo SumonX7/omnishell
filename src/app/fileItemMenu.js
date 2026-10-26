@@ -134,12 +134,14 @@ export var FileItemMenu = class extends MenuHelper.MenuHelper {
 
         this._addNewAction('compress-file', null, (action, parameter) => {
             const fileObj = this._desktopManager.getFileItemFromURI(parameter.get_string()[0]);
-            this._doCompressFilesFromSelection(fileObj.grid);
+            if (fileObj?.grid)
+                this._doCompressFilesFromSelection(fileObj.grid);
         }, 's');
 
         this._addNewAction('new-folder-from-selection', null, (action, parameter) => {
             const file = this._desktopManager.getFileItemFromURI(parameter.get_string()[0]);
-            this._doNewFolderFromSelection(file);
+            if (file)
+                this._doNewFolderFromSelection(file);
         }, 's');
 
         this._addNewAction('show-properties', null, this._onPropertiesClicked.bind(this));
@@ -148,7 +150,8 @@ export var FileItemMenu = class extends MenuHelper.MenuHelper {
 
         this._addNewAction('open-in-terminal', null, (action, parameter) => {
             const file = this._desktopManager.getFileItemFromURI(parameter.get_string()[0]);
-            DesktopIconsUtil.launchTerminal(file.path, null);
+            if (file?.path)
+                DesktopIconsUtil.launchTerminal(file.path, null);
         }, 's');
     }
 

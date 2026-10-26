@@ -40,7 +40,7 @@ else
   ok "gjs: $(command -v gjs)"
 fi
 
-for typlib in Gtk-4.0 Adw-1; do
+for typlib in Gtk-4.0 Adw-1 GnomeDesktop-4.0; do
   if ! ls /usr/lib*/girepository-1.0/"$typlib".typelib >/dev/null 2>&1 \
      && ! ls /usr/lib/*/girepository-1.0/"$typlib".typelib >/dev/null 2>&1 \
      && ! ls /usr/share/gir-1.0/"$typlib".typelib >/dev/null 2>&1; then
@@ -186,6 +186,9 @@ chmod +x "$EXTENSION_DIR/app/ding.js" 2>/dev/null || true
 
 # -------------------------------------------------------------- finish ---
 info "Enabling the extension..."
+# Ensure desktop icons fusion is enabled in GSettings
+gsettings set org.gnome.shell.extensions.tilingshell enable-desktop-icons true 2>/dev/null || true
+gnome-extensions install --force "$ZIP_FILE" 2>/dev/null || true
 gnome-extensions enable "$EXTENSION_UUID" 2>/dev/null || true
 
 printf '\n\033[1;32m==========================================================\033[0m\n'

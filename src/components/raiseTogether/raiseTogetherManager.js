@@ -1,6 +1,7 @@
 import SignalHandling from "../../utils/signalHandling.js";
 import Settings from "../../settings/settings.js";
 import { getWindows } from "../../utils/ui.js";
+import { isDesktopWindow } from "../../utils/desktopFilter.js";
 
 class RaiseTogetherManager {
   _signals;
@@ -21,12 +22,7 @@ class RaiseTogetherManager {
 
   destroy() {
     this._signals.disconnect();
-    const toDelete = [];
-    Object.keys(this._raiseId).forEach((key) => {
-      this._raiseId[key].win.disconnect(this._raiseId[key].id);
-      toDelete.push(key);
-    });
-    toDelete.forEach((key) => delete this._raiseId[key]);
+    this._raiseId = {};
   }
 
   _turnOn() {
@@ -46,39 +42,47 @@ class RaiseTogetherManager {
   }
 
   _connectRaisedSignal(window) {
+    if (!window || isDesktopWindow(window) || this._raiseId[window.get_id()]) return;
     const raisedId = this._signals.connect(window, "raised", () => {
       if (!window.assignedTile) return;
       this._onTiledWindowRaised(window);
     });
     this._raiseId[window.get_id()] = { id: raisedId, win: window };
-    window.connect("unmanaged", () => {
+    this._signals.connect(window, "unmanaged", () => {
       delete this._raiseId[window.get_id()];
     });
   }
 
   _onTiledWindowRaised(tiledWindow) {
-    const workspace = tiledWindow.get_workspace();
+    if (!tiledWindow) return;
+    const workspace = tiledWindow.get_workspace?.();
     getWindows(workspace).forEach((winSameWorkspace) => {
-      if (!winSameWorkspace.assignedTile) return;
+      if (!winSameWorkspace || winSameWorkspace === tiledWindow || !winSameWorkspace.assignedTile) return;
       this._stopRaiseSignalHandling(winSameWorkspace);
-      winSameWorkspace.raise();
+      try { winSameWorkspace.raise(); } catch {}
       this._restartRaiseSignalHandling(winSameWorkspace);
     });
     this._stopRaiseSignalHandling(tiledWindow);
-    tiledWindow.raise();
+    try { tiledWindow.raise(); } catch {}
     this._restartRaiseSignalHandling(tiledWindow);
   }
 
   _stopRaiseSignalHandling(window) {
-    const data = this._raiseId[window.get_id()];
-    if (!data) return;
-    window.block_signal_handler(data.id);
+    if (!window) return;
+    try {
+      const data = this._raiseId[window.get_id?.()];
+      if (!data) return;
+      window.block_signal_handler(data.id);
+    } catch {}
   }
 
   _restartRaiseSignalHandling(window) {
-    const data = this._raiseId[window.get_id()];
-    if (!data) return;
-    window.unblock_signal_handler(data.id);
+    if (!window) return;
+    try {
+      const data = this._raiseId[window.get_id?.()];
+      if (!data) return;
+      window.unblock_signal_handler(data.id);
+    } catch {}
   }
 }
 

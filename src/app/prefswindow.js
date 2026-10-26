@@ -155,15 +155,16 @@ export function preferencesFrame(desktopSettings, nautilusSettings, gtkSettings)
 export function buildSwitcher(settings, key, labelText) {
     const hbox = new Gtk.Box({orientation: Gtk.Orientation.HORIZONTAL, spacing: 10});
     const label = new Gtk.Label({label: labelText, xalign: 0});
+    const hasKey = !!(settings && settings.settings_schema && settings.settings_schema.has_key(key));
     let status = false;
-    if (settings)
+    if (hasKey)
         status = settings.get_boolean(key);
 
     const switcher = new Gtk.Switch({active: status});
     label.set_hexpand(true);
     switcher.set_hexpand(false);
     switcher.set_halign(Gtk.Align.END);
-    if (settings)
+    if (hasKey)
         settings.bind(key, switcher, 'active', 3);
     else
         switcher.sensitive = false;
@@ -188,17 +189,20 @@ export function buildSwitcher(settings, key, labelText) {
 export function buildSelector(settings, key, labelText, elements) {
     const listStore = new Gtk.ListStore();
     listStore.set_column_types([GObject.TYPE_STRING, GObject.TYPE_STRING]);
-    if (settings) {
-        const schemaKey = settings.settings_schema.get_key(key);
-        const values = schemaKey.get_range().get_child_value(1).get_child_value(0).get_strv();
-        for (const val of values) {
-            const iter = listStore.append();
-            let visibleText = val;
-            if (visibleText in elements)
-                visibleText = elements[visibleText];
+    const hasKey = !!(settings && settings.settings_schema && settings.settings_schema.has_key(key));
+    if (hasKey) {
+        try {
+            const schemaKey = settings.settings_schema.get_key(key);
+            const values = schemaKey.get_range().get_child_value(1).get_child_value(0).get_strv();
+            for (const val of values) {
+                const iter = listStore.append();
+                let visibleText = val;
+                if (visibleText in elements)
+                    visibleText = elements[visibleText];
 
-            listStore.set(iter, [0, 1], [visibleText, val]);
-        }
+                listStore.set(iter, [0, 1], [visibleText, val]);
+            }
+        } catch {}
     }
     const hbox = new Gtk.Box({orientation: Gtk.Orientation.HORIZONTAL, spacing: 10});
     const label = new Gtk.Label({label: labelText, xalign: 0});
@@ -210,7 +214,7 @@ export function buildSelector(settings, key, labelText, elements) {
     label.set_hexpand(true);
     combo.set_hexpand(false);
     combo.set_halign(Gtk.Align.END);
-    if (settings)
+    if (hasKey)
         settings.bind(key, combo, 'active-id', 3);
     else
         combo.sensitive = false;

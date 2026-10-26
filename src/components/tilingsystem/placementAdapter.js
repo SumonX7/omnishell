@@ -48,8 +48,13 @@ function adaptWindow(window, easeMode) {
       return actor ? adaptActor(actor, easeMode) : null;
     },
     onGeometryChanged: (cb) => {
-      const a = window.connect("size-changed", cb);
-      const b = window.connect("position-changed", cb);
+      // "size-changed" and "position-changed" are reported separately so
+      // that the handler can tell which kind of change happened and skip
+      // the work it does not need. A position change fires at pointer rate
+      // while a window is being dragged, and every firing used to cost a
+      // `get_frame_rect()` round trip to mutter.
+      const a = window.connect("size-changed", () => cb("size"));
+      const b = window.connect("position-changed", () => cb("position"));
       return () => {
         window.disconnect(a);
         window.disconnect(b);
@@ -62,6 +67,5 @@ function adaptWindow(window, easeMode) {
   };
 }
 export {
-  adaptActor,
   adaptWindow
 };

@@ -46,6 +46,9 @@ const Gettext = imports.gettext.domain('tilingshell');
 
 const _ = Gettext.gettext;
 
+// Event-driven desktop refreshes are coalesced inside this window.
+const DESKTOP_UPDATE_DEBOUNCE_MS = 200;
+
 export var DesktopManager = class {
     constructor(mainApp, dbusManager, desktopList, codePath, asDesktop, primaryIndex) {
         this.mainApp = mainApp;
@@ -57,9 +60,15 @@ export var DesktopManager = class {
         if (asDesktop) {
             this.mainApp.hold(); // Don't close the application if there are no desktops
             this._hold_active = true;
+            // Always notify the extension to disable the launch watchdog timer
+            // on both Wayland and X11 as soon as DesktopManager is running.
+            try {
+                DBusUtils.extensionControl?.activate_action('disableTimer', null);
+            } catch (e) {
+                console.log(`[OmniShell-DING] Error activating disableTimer: ${e.message}`);
+            }
             if (this.using_X11) {
                 // the system is using Wayland, but GTK is using X11!!!!!!
-                DBusUtils.extensionControl.activate_action('disableTimer', null);
                 if (Prefs.desktopSettings.get_boolean('check-x11wayland')) {
                     this._notifyX11UnderWayland = new NotifyX11UnderWayland.NotifyX11UnderWayland(doNotShowAnymore => {
                         this._notifyX11UnderWayland = null;
@@ -100,7 +109,8 @@ export var DesktopManager = class {
         this._asDesktop = asDesktop;
         this._desktopList = desktopList;
         this._desktops = [];
-        this._desktopFilesChanged = false;
+        this._desktopUpdateRequested = false;
+        this._desktopUpdateSourceId = 0;
         this._readingDesktopFiles = false;
         this._desktopDir = DesktopIconsUtil.getDesktopDir();
         this.desktopFsId = this._desktopDir.query_info('id::filesystem', Gio.FileQueryInfoFlags.NONE, null).get_attribute_string('id::filesystem');
@@ -117,16 +127,12 @@ export var DesktopManager = class {
         this._settingsId = Prefs.desktopSettings.connect('changed', (obj, key) => {
             if (key === 'dark-text-in-labels') {
                 this.darkText = Prefs.desktopSettings.get_boolean('dark-text-in-labels');
-                this._updateDesktop().catch(e => {
-                    print(`Exception while updating Desktop after Dark Text changed: ${e.message}\n${e.stack}`);
-                });
+                this._scheduleDesktopUpdate('Dark Text changed');
                 return;
             }
             if (key === 'show-link-emblem') {
                 this.showLinkEmblem = Prefs.desktopSettings.get_boolean('show-link-emblem');
-                this._updateDesktop().catch(e => {
-                    print(`Exception while updating Desktop after Show Emblems changed: ${e.message}\n${e.stack}`);
-                });
+                this._scheduleDesktopUpdate('Show Emblems changed');
                 return;
             }
             if (key === 'icon-size') {
@@ -136,9 +142,7 @@ export var DesktopManager = class {
 
                 this._fileList.forEach(x => x.updateIcon());
                 this._placeAllFilesOnGrids(true);
-                this._updateDesktop().catch(e => {
-                    print(`Exception while updating Desktop after Show Emblems changed: ${e.message}\n${e.stack}`);
-                });
+                this._scheduleDesktopUpdate('icon size changed');
                 return;
             }
             if (key === 'label-font-size-pt') {
@@ -180,41 +184,29 @@ export var DesktopManager = class {
                 return;
             }
             this.showDropPlace = Prefs.desktopSettings.get_boolean('show-drop-place');
-            this._updateDesktop().catch(e => {
-                print(`Exception while updating Desktop after Settings Changed: ${e.message}\n${e.stack}`);
-            });
+            this._scheduleDesktopUpdate('Settings changed');
         });
         Prefs.gtkSettings.connect('changed', (obj, key) => {
             if (key === 'show-hidden') {
                 this._showHidden = Prefs.gtkSettings.get_boolean('show-hidden');
-                this._updateDesktop().catch(e => {
-                    print(`Exception while updating Desktop after Hidden Settings Changed: ${e.message}\n${e.stack}`);
-                });
+                this._scheduleDesktopUpdate('Hidden Settings changed');
             }
         });
         Prefs.nautilusSettings.connect('changed', (obj, key) => {
             if (key === 'show-image-thumbnails') {
-                this._updateDesktop().catch(e => {
-                    print(`Exception while updating Desktop after Nautilus Settings Changed: ${e.message}\n${e.stack}`);
-                });
+                this._scheduleDesktopUpdate('Nautilus Settings changed');
             }
         });
         this._gtkIconTheme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default());
         this._gtkIconTheme.connect('changed', () => {
-            this._updateDesktop().catch(e => {
-                print(`Exception while updating Desktop after Gtk Icon Theme Change: ${e.message}\n${e.stack}`);
-            });
+            this._scheduleDesktopUpdate('Gtk Icon Theme changed');
         });
         this._volumeMonitor = Gio.VolumeMonitor.get();
         this._volumeMonitor.connect('mount-added', () => {
-            this._updateDesktop().catch(e => {
-                print(`Exception while updating Desktop after mount added: ${e.message}\n${e.stack}`);
-            });
+            this._scheduleDesktopUpdate('mount added');
         });
         this._volumeMonitor.connect('mount-removed', () => {
-            this._updateDesktop().catch(e => {
-                print(`Exception while updating Desktop after mount removed: ${e.message}\n${e.stack}`);
-            });
+            this._scheduleDesktopUpdate('mount removed');
         });
 
         this.rubberBand = false;
@@ -230,6 +222,8 @@ export var DesktopManager = class {
         DBusUtils.GtkVfsMetadata.connectSignalToProxy('AttributeChanged', this._metadataChanged.bind(this));
         this._allFileList = null;
         this._forcedExit = false;
+        // Initial load runs immediately; only later event-driven refreshes
+        // wait for the debounce window.
         this._updateDesktop().catch(e => {
             print(`Exception while Initiating Desktop: ${e.message}\n${e.stack}`);
         });
@@ -257,6 +251,8 @@ export var DesktopManager = class {
 
                 this._desktops = [];
                 this._forcedExit = true;
+                this._desktopUpdateRequested = false;
+                this._clearDesktopUpdateSource();
                 if (this._desktopEnumerateCancellable)
                     this._desktopEnumerateCancellable.cancel();
 
@@ -346,9 +342,7 @@ export var DesktopManager = class {
             this._primaryScreen = null;
 
         this._createGridWindows();
-        this._updateDesktop().catch(e => {
-            console.log(`Exception while updating Desktop after Show Emblems changed: ${e.message}\n${e.stack}`);
-        });
+        this._scheduleDesktopUpdate('desktop geometry changed');
     }
 
     _createGridWindows() {
@@ -368,6 +362,12 @@ export var DesktopManager = class {
                 desktopName = `DING ${desktop.monitorIndex + 1}`;
             }
             this._desktops.push(new DesktopGrid.DesktopGrid(this, desktopName, desktop, this._asDesktop));
+        }
+        if (this._asDesktop) {
+            try {
+                DBusUtils.extensionControl?.activate_action('disableTimer', null);
+            } catch {
+            }
         }
     }
 
@@ -497,9 +497,7 @@ export var DesktopManager = class {
         this._addFilesToDesktop(fileItems, Enums.StoredCoordinates.OVERWRITE);
         fileItems = undefined;
         if (this.keepArranged) {
-            this._updateDesktop().catch(e => {
-                print(`Exception while doing move with drag and drop and keeping arranged: ${e.message}\n${e.stack}`);
-            });
+            this._scheduleDesktopUpdate('move with drag and drop while keeping arranged');
         }
     }
 
@@ -858,9 +856,7 @@ export var DesktopManager = class {
             this.selectAll();
             return true;
         } else if (keyval === Gdk.KEY_F5) {
-            this._updateDesktop().catch(e => {
-                print(`Exception while updating Desktop after pressing F5: ${e.message}\n${e.stack}`);
-            });
+            this._scheduleDesktopUpdate('F5 pressed');
             return true;
         } else if (isCtrl && ((keyval === Gdk.KEY_H) || (keyval === Gdk.KEY_h))) {
             Prefs.gtkSettings.set_boolean('show-hidden', !this._showHidden);
@@ -1199,76 +1195,103 @@ export var DesktopManager = class {
         this._fileList = [];
     }
 
+    _clearDesktopUpdateSource() {
+        if (this._desktopUpdateSourceId) {
+            GLib.source_remove(this._desktopUpdateSourceId);
+            this._desktopUpdateSourceId = 0;
+        }
+    }
+
+    _scheduleDesktopUpdate(reason) {
+        if (this._forcedExit)
+            return;
+        this._desktopUpdateRequested = true;
+        if (this._desktopUpdateSourceId)
+            return;
+        this._desktopUpdateSourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, DESKTOP_UPDATE_DEBOUNCE_MS, () => {
+            this._desktopUpdateSourceId = 0;
+            this._updateDesktop().catch(e => {
+                print(`Exception while updating Desktop after ${reason}: ${e.message}\n${e.stack}`);
+            });
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _destroyFileList(fileList) {
+        if (fileList) {
+            for (const item of fileList)
+                item._onDestroy();
+        }
+    }
+
     async _updateDesktop() {
+        if (this._forcedExit)
+            return;
         if (this._readingDesktopFiles) {
-            // just notify that the files changed while being read from the disk.
-            this._desktopFilesChanged = true;
-            if (this._desktopEnumerateCancellable && !this._forceDraw) {
-                this._desktopEnumerateCancellable.cancel();
-                this._desktopEnumerateCancellable = null;
-            }
+            // Single-flight: only one enumerate/draw cycle runs; a request
+            // during it means exactly one follow-up pass.
+            this._desktopUpdateRequested = true;
             return;
         }
 
         this._readingDesktopFiles = true;
-        this._forceDraw = false;
-        this._lastDesktopUpdateRequest = GLib.get_monotonic_time();
-        let fileList = [];
-        /* eslint-disable no-await-in-loop */
-        while (true) {
-            this._desktopFilesChanged = false;
-            if (!this._desktopDir.query_exists(null)) {
-                fileList = [];
-                break;
-            }
-            fileList = await this._doReadAsync();
-            if (this._forcedExit)
-                return;
+        try {
+            /* eslint-disable no-await-in-loop */
+            do {
+                this._desktopUpdateRequested = false;
+                // This pass supersedes any debounce that was still pending.
+                this._clearDesktopUpdateSource();
+                let fileList = [];
+                if (this._desktopDir.query_exists(null))
+                    fileList = await this._doReadAsync();
 
-            if (fileList !== null) {
-                if (!this._desktopFilesChanged)
-                    break;
-
-                if (this._forceDraw) {
-                    this._drawDesktop(fileList);
-                    this._lastDesktopUpdateRequest = GLib.get_monotonic_time();
-                } else {
-                    // Destroy the unused FileItems to prevent memory leak
-                    for (const item of fileList)
-                        item._onDestroy();
+                // A forced exit means the manager is being torn down. The
+                // finally block below still owns the flag, so a return here
+                // cannot leave the desktop permanently stuck in "reading".
+                if (this._forcedExit) {
+                    this._destroyFileList(fileList);
+                    return;
                 }
-            }
-            await DesktopIconsUtil.waitDelayMs(500);
-            if ((GLib.get_monotonic_time() - this._lastDesktopUpdateRequest) > 1000000)
-                this._forceDraw = true;
-            else
-                this._forceDraw = false;
+
+                if (fileList === null) {
+                    // The enumeration was invalidated by a newer request, or
+                    // it failed. Re-read only if there is a request to serve.
+                    if (this._desktopUpdateRequested)
+                        continue;
+                    break;
+                }
+
+                // _doReadAsync() never returns a list invalidated during
+                // enumeration; any later request is handled by the next pass.
+                this._drawDesktop(fileList);
+            } while (this._desktopUpdateRequested && !this._forcedExit);
+        } finally {
+            this._readingDesktopFiles = false;
         }
-        this._readingDesktopFiles = false;
-        this._forceDraw = false;
-        this._drawDesktop(fileList);
     }
 
     _doReadAsync() {
         if (this._desktopEnumerateCancellable)
             this._desktopEnumerateCancellable.cancel();
 
-        this._desktopEnumerateCancellable = new Gio.Cancellable();
+        const cancellable = new Gio.Cancellable();
+        this._desktopEnumerateCancellable = cancellable;
         return new Promise(resolve => {
             this._desktopDir.enumerate_children_async(
                 Enums.DEFAULT_ATTRIBUTES,
                 Gio.FileQueryInfoFlags.NONE,
                 GLib.PRIORITY_DEFAULT,
-                this._desktopEnumerateCancellable,
+                cancellable,
                 (source, result) => {
-                    this._desktopEnumerateCancellable = null;
+                    if (this._desktopEnumerateCancellable === cancellable)
+                        this._desktopEnumerateCancellable = null;
+                    let fileList = [];
                     try {
                         const fileEnum = source.enumerate_children_finish(result);
-                        if (this._desktopFilesChanged && !this._forceDraw) {
+                        if (this._desktopUpdateRequested) {
                             resolve(null);
                             return;
                         }
-                        const fileList = [];
                         for (const [newFolder, extras] of DesktopIconsUtil.getExtraFolders()) {
                             try {
                                 fileList.push(new FileItem.FileItem(this,
@@ -1321,6 +1344,9 @@ export var DesktopManager = class {
                         }
                         resolve(fileList);
                     } catch {
+                        // A cancelled or failed enumeration can leave already
+                        // created FileItems behind; destroy them, don't leak.
+                        this._destroyFileList(fileList);
                         resolve(null);
                     }
                 }
@@ -1506,17 +1532,13 @@ export var DesktopManager = class {
             /* The desktop is what changed, and not a file inside it */
             if (file.get_uri() === this._desktopDir.get_uri()) {
                 if (this._updateWritableByOthers()) {
-                    this._updateDesktop().catch(e => {
-                        print(`Exception while updating Desktop from Directory Monitor Attribute Change: ${e.message}\n${e.stack}`);
-                    });
+                    this._scheduleDesktopUpdate('Directory Monitor Attribute Change');
                 }
                 return;
             }
             break;
         }
-        this._updateDesktop().catch(e => {
-            print(`Exception while updating Desktop from Directory Monitor: ${e.message}\n${e.stack}`);
-        });
+        this._scheduleDesktopUpdate('Directory Monitor');
     }
 
     _getClipboardText() {

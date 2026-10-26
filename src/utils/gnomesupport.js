@@ -1,4 +1,5 @@
 import { St, Clutter, Shell, Meta } from "../gi/ext.js";
+import * as Main from "resource:///org/gnome/shell/ui/main.js";
 
 /**
  * Returns the orientation properties for a box layout.
@@ -59,7 +60,7 @@ function unmaximizeWindow(window) {
 function skipNextEffect(actor) {
   if (!actor) return false;
   try {
-    const wm = global.main?.wm;
+    const wm = Main?.wm ?? global.window_manager;
     if (!wm) return false;
     // The method has been spelled several ways over the years.
     if (typeof wm.skipNextEffect === "function") {

@@ -20,6 +20,9 @@
  * coordinate even when no event has arrived yet.
  */
 
+import { Meta } from "../gi/ext.js";
+import SignalHandling from "./signalHandling.js";
+
 const POINTER_UNSET = -1;
 
 class PointerTracker {
@@ -30,6 +33,7 @@ class PointerTracker {
   _modifiers = 0;
   _signals = null;
   _hooked = false;
+  _wayland = null;
 
   static get() {
     if (!PointerTracker._instance) {
@@ -108,7 +112,10 @@ class PointerTracker {
           this._y = y;
         }
       }
-      if (typeof modifiers === "number") {
+      // On Wayland the third value is not a live modifier mask. Modifiers
+      // are taken from the stage events instead, so a native read must not
+      // overwrite them with a stale value.
+      if (typeof modifiers === "number" && !this._isWayland()) {
         this._modifiers = modifiers;
       }
     } catch {
@@ -116,15 +123,13 @@ class PointerTracker {
   }
 
   _isWayland() {
+    if (this._wayland !== null) return this._wayland;
     try {
-      return global.get_current_time === void 0
-        ? false
-        : typeof Meta !== "undefined" && typeof Meta.Backend !== "undefined"
-          ? !!Meta.Backend.is_wayland?.()
-          : false;
+      this._wayland = Boolean(Meta.is_wayland_compositor?.());
     } catch {
-      return false;
+      this._wayland = false;
     }
+    return this._wayland;
   }
 
   /**
@@ -148,12 +153,14 @@ class PointerTracker {
    * `global.get_pointer()`), refreshed from the native call when possible.
    */
   getModifiers() {
-    try {
-      if (typeof global.get_pointer === "function") {
-        const modifiers = global.get_pointer()[2];
-        if (typeof modifiers === "number") this._modifiers = modifiers;
+    if (!this._isWayland()) {
+      try {
+        if (typeof global.get_pointer === "function") {
+          const modifiers = global.get_pointer()[2];
+          if (typeof modifiers === "number") this._modifiers = modifiers;
+        }
+      } catch {
       }
-    } catch {
     }
     return this._modifiers;
   }
@@ -163,8 +170,6 @@ class PointerTracker {
     this._y = POINTER_UNSET;
   }
 }
-
-import SignalHandling from "./signalHandling.js";
 
 export {
   PointerTracker

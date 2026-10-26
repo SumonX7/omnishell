@@ -3,7 +3,7 @@
 **Extension:** `omnishell@spark.dev` — *OmniShell: Tiling & Desktop Fusion*
 **Upstream credits:** [Tiling Shell](https://github.com/FerRaZo/gnome-shell-extension-tiling) by Domenico Ferraro · [DING](https://github.com/SergioCostas/Desktop-Icons-NG) by Sergio Costas
 **Target:** openSUSE Tumbleweed · GNOME Shell 50 · Wayland
-**Version reviewed:** 1.0.0 (version `100`)
+**Version reviewed:** 1.0.0 (version `100`) · **Current release:** 1.0.6 (version `106`)
 **Repository:** <https://github.com/SumonX7/omnishell>
 
 ---
@@ -34,14 +34,14 @@ desktop experience:
   Wayland subprocess and draws files, folders, and removable drives directly on the
   desktop.
 
-This review covered the complete source tree (**108 JavaScript files**, 2 GSettings
+This review covered the complete source tree (**109 JavaScript files**, 2 GSettings
 schemas, the installer, the preferences UI, the D-Bus bridge, the gettext catalogues,
 and the packaging layout) and was validated against a live GNOME Shell 50 / mutter 18
 runtime.
 
 The work was done in **two rounds**. The first round fixed the auto-tiling failure and
 21 other confirmed bugs. The second round went back to the two raw audit reports
-(`_audit_tiling.md`, `_audit_prefs.md`, ~55 findings in total), re-tested every
+(internal audit reports, ~55 findings in total), re-tested every
 remaining claim, and closed the gap — fixing **32 further real defects** and
 refuting **4 more false positives** along the way.
 
@@ -54,13 +54,17 @@ extension's own schema — see [§3.1](#31-the-shadowing-schema-a-fifth-cause-of
 
 | Metric | Result |
 |---|---|
-| Source files reviewed | 108 JS files + 2 schemas + installer + prefs + build system |
+| Source files reviewed | 109 JS files + 2 schemas + installer + prefs + build system |
 | **Bugs confirmed and fixed** | **54** (21 in round 1, 32 in round 2, 1 in round 3) |
 | Audit claims tested and **refuted** (no fix needed) | **11** (7 in round 1, 4 in round 2) |
-| Syntax check | 108 files, **0 errors** |
-| Automated fix verification | **79/79 passing** (`ok=41` + `ok=5` + `ok=7` + `confirmed=0` across four harnesses) |
+| Syntax check | 109 files, **0 errors** |
+| Automated verification | **132 checks, all passing** (44 fix + 5 SortOrder + 10 perf + 26 claim + 24 DING + 14 pin + 9 dynamic-math across seven Node suites) |
 | Schema compilation | `glib-compile-schemas --strict` → **OK** |
-| Runtime validation | Extension enables cleanly, **no JavaScript errors** in journal |
+| Runtime validation | Extension enabled cleanly with **no JavaScript errors** in earlier rounds. On 2026-10-26 the DING-child burst/settings/teardown/arrange/idle rows passed; shell-side drag/dynamic/multi-monitor rows still need a logout with 1.0.6. |
+
+A later maintenance pass, released as **1.0.4**, fixed 15 additional defects in
+the DING bridge, tiling geometry, signal teardown and build tooling; see
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ### The headline fix
 
@@ -115,9 +119,11 @@ runtime, it **was** settled by the runtime.
   were conclusively proven wrong rather than merely doubted.
 - **Dynamic layout tests** — standalone Node harnesses exercising the guillotine
   layout-tree math (`reflow`, `arrangement`, `layoutTree`, `pins`) in isolation.
-- **Post-fix verification harness** — `verify_fixes.mjs`, a 21-check automated suite
+- **Post-fix verification harness** — `verify_fixes.mjs`, a 44-check automated suite
   that asserts each bug's fix is actually present in the source (and, for the refuted
   claims, asserts the code was **not** "fixed" for a non-bug).
+- **DING refresh harness** — `verify_ding_refresh.mjs`, a 24-check static suite covering
+  the desktop-refresh debounce, single-flight update and teardown paths.
 
 ### Why runtime probing mattered
 
@@ -579,8 +585,8 @@ rm -rf "$BACKUP_DIR"
 
 ### 4.4 Round 2 — the remaining findings
 
-The first round fixed 21 of the ~55 findings listed in the two raw audit reports
-(`_audit_tiling.md`, `_audit_prefs.md`). The second round re-examined **every**
+The first round fixed 21 of the ~55 findings listed in the two internal audit
+reports. The second round re-examined **every**
 remaining claim, verified each one against the actual source and the actual
 algorithms, and closed the gap.
 
@@ -667,9 +673,9 @@ machine. The cause was not in the source at all — see
 | `Makefile` | The build system |
 | `README.md`, `CHANGELOG.md`, `LICENSE`, `.gitignore` | The project documentation and metadata |
 | `verify_round2.mjs` | Verification harness for the round-2 fixes (5 checks) |
-| `verify_perf.mjs` | Verification harness for the dynamic-layout cache (7 checks) |
+| `verify_perf.mjs` | Verification harness for the dynamic-layout cache (10 checks) |
 | `check_syntax.mjs` | Path-independent syntax checker for every source file |
-| `.github/workflows/ci.yml` | GitHub Actions workflow: syntax check, schema compilation, all four harnesses, resource build, catalogue compilation, `make build`, archive validation and artefact upload |
+| `.github/workflows/ci.yml` | GitHub Actions workflow: syntax check, schema compilation, all five verification harnesses, resource build, catalogue compilation, `make build`, archive validation and artefact upload |
 
 ---
 
@@ -719,14 +725,20 @@ mechanism was already in place.
 
 ```
 $ node check_syntax.mjs
-checked 108 files, 0 with syntax errors
+checked 109 files, 0 with syntax errors
 ```
 
 ### 6.2 Automated fix verification
 
-Four harnesses, **79 checks** in total. Each check strips comments from the source
-before matching, so it asserts the presence of **code**, not of prose describing the
-bug that was fixed.
+The current suite has **seven Node suites and 132 checks**: the five
+fix-regression harnesses — `verify_fixes.mjs` (44), `verify_round2.mjs` (5),
+`verify_perf.mjs` (10), `verify_claims.mjs` (26) and
+`verify_ding_refresh.mjs` (24) — plus `verify_pins.mjs` (14) and
+`test_dyn.mjs` (9). Each fix check strips comments from the source before
+matching, so it asserts the presence of **code**, not of prose describing the
+bug that was fixed. The output blocks below are the round-2 snapshot; the later
+Phase 3/4 checks, the DING harness and the pin/dynamic-math suites were added
+without changing the shape of the output.
 
 ```
 $ node verify_fixes.mjs
@@ -830,7 +842,7 @@ confirmed=0 refuted=26 total=26
 ```
 
 This harness is the **inverse** of the others: it re-tests every claim from the two
-original audit reports (`_audit_tiling.md`, `_audit_prefs.md`) against the current
+original internal audit reports against the current
 source. A claim is `CONFIRMED` when the defect it describes is still present and
 `REFUTED` when it is not. **All 26 claims are now refuted** — every real defect
 they identified has been fixed, and the ones that were never real have been
@@ -842,6 +854,11 @@ correctly understood rather than "fixed" into a regression.
 > and resolved a bus name from a comment instead of from the constant. Each was
 > corrected so that the harness asserts the thing it claims to assert.
 
+`verify_ding_refresh.mjs` is the newest harness. It asserts the 200 ms
+debounce, the single-flight loop, the removal of the 500 ms retry and
+`_forceDraw`, the SIGTERM cleanup, and the preserved enumeration semantics
+(24 checks).
+
 ### 6.3 Schema compilation and inspection
 
 ```
@@ -850,25 +867,10 @@ COMPILED OK
 ```
 
 ```
-$ ./check_schemas.sh
-=== omnishell.ding keys ===
-arrow-shortcuts                            icon-size
-arrangeorder                               keep-arranged
-check-x11wayland                           keep-stacked
-dark-text-in-labels                        label-font-size-pt
-icon-size                                  show-drop-place
-show-home                                  show-link-emblem
-show-network-volumes                       show-trash
-show-volumes                               sort-special-folders
-start-corner                               un-stackedtypes
-
-=== tilingshell: new keys ===
+$ gsettings list-keys org.gnome.shell.extensions.tilingshell \
+    | grep -E '^(migrations|tiling-excluded-apps)$'
 migrations
 tiling-excluded-apps
-
-=== defaults ===
-'[]'
-'[]'
 ```
 
 ### 6.4 Live runtime validation
@@ -1115,7 +1117,7 @@ compiled catalogues so the translations can be regenerated and contributed to.
 
 **CI:** `.github/workflows/ci.yml` runs on every push and pull request. It installs
 only `gettext`, `libglib2.0-bin`, `nodejs`, `zip` and `unzip`, then runs the syntax
-check, `glib-compile-schemas --strict`, the three verification harnesses, the
+check, `glib-compile-schemas --strict`, the five verification harnesses, the
 GResource build, the catalogue compilation and `make build`. It finally validates the
 archive (single top-level directory, `metadata.json` present, `unzip -t` clean) and
 uploads the ZIP as a build artefact. The harnesses are plain Node scripts with no
@@ -1145,6 +1147,50 @@ integration. Splitting it into a `TilingManager` façade with
 share only `TileUtils` and `_workArea` — would make the remaining bugs far easier to
 isolate and test.
 
+### 9.6 Phase 6 lifecycle audit
+
+- `TilingManager.destroy()` clears `_dynamicLayoutCandidatesCache` next to the
+  other per-manager caches. `_dynamicLayoutOffset`, `_dynamicArrangements`,
+  `_dynamicManagedCache`, `_pinSettleBudget`, `_dynamicNewcomers`,
+  `_dynamicSlotsCache`, `_dynamicTreeRevisions`, `_dynamicTreeCache`,
+  `_dynamicWindows` and `_dynamicWindowSignals` were already cleared.
+- `ReflowScheduler` owns no timer; it only tracks `_running` and `_pending`.
+  The single idle source is `_dynamicReflowSourceId`, removed in `destroy()`.
+  Signals are disconnected before teardown, so no new reflow can be queued.
+- `TilingDragCoordinator.destroy()` is idempotent through `_enabled`. `_endDrag()`
+  calls `_stopTimer()`, which removes the 15 ms source only when `_timerId` is
+  set; `extension.disable()` aborts the coordinator before destroying managers.
+- `WindowPlacer.destroy()` forgets every in-flight target. `forget()` cancels
+  the pending and verification timeouts and disconnects the geometry/gone
+  handlers, so no callback fires after teardown.
+- Timer grep over `src/components/tilingsystem`, `src/utils` and
+  `src/extension.js` finds only the drag coordinator's 15 ms source and the
+  one-shot placement clock in `metaPlacementTarget.js`. DING's 250 ms
+  `visibleArea`/`emulateX11WindowType` timers and the `launchSubprocess`
+  watchdog are one-shot or bounded and cleared on disable; the `dingBridge`
+  relaunch timer is cancelled by `killCurrentProcess()`. The 1 s force-exit
+  fallback is intentionally one-shot so a hung child cannot survive teardown.
+
+### 9.7 Upstream integration helper
+
+`src/app/desktopIconsIntegration.js` is an upstream DING helper for other
+extensions' integration. OmniShell does not import it; it is kept for parity
+with upstream and is not dead code. Do not delete it without user approval.
+
+### 9.8 DING refresh residual risks
+
+- **R2 (low):** `_doReadAsync()` checks for a newer request once after
+  `enumerate_children_finish()` and then builds the list synchronously. A normal
+  GLib event cannot interleave, so a stale draw is unlikely. If a `FileItem`
+  constructor ever emits a refresh signal synchronously, the list can be drawn
+  once before the follow-up pass. Add a final request check before
+  `_drawDesktop()` only if this reproduces; pair it with a bounded deadline.
+- **R3 (low):** removing `_forceDraw` also removes the old ~1 s safety net. A
+  pathological stream that invalidates every enumeration before it completes
+  could postpone drawing. `Gio.FileMonitor` rate limiting (1 s) and fast reads
+  make this unlikely; stress-test a large desktop before publish. Fix only if
+  reproduced, with a bounded fallback — never with the old 500 ms polling loop.
+
 ---
 
 ## 10. Contributing
@@ -1173,9 +1219,10 @@ make check
 
 # Or individually:
 node check_syntax.mjs              # syntax check every source file
-node verify_fixes.mjs              # the 41 round-1 + round-2 + round-3 fix checks
+node verify_fixes.mjs              # the 44 fix and regression checks
 node verify_round2.mjs             # the 5 SortOrder round-trip checks
-node verify_perf.mjs               # the 7 dynamic-layout cache checks
+node verify_perf.mjs               # the 10 dynamic-layout cache checks
+node verify_ding_refresh.mjs       # the 24 DING desktop-refresh checks
 node verify_claims.mjs             # the 26 original audit claims, re-tested
 glib-compile-schemas --strict src/schemas/
 ```
@@ -1221,7 +1268,7 @@ make catalogues
 ```
 OmniShell/
 ├── src/
-│   ├── metadata.json              # UUID, shell-version 46–51, version 1.0.0
+│   ├── metadata.json              # UUID, shell-version 46–51, version 1.0.6
 │   ├── extension.js               # Extension lifecycle, settings migrations
 │   ├── prefs.js                   # Adw preferences window
 │   ├── keybindings.js             # Keybinding registration & overrides
@@ -1253,11 +1300,17 @@ OmniShell/
 │   ├── schemas/
 │   │   ├── org.gnome.shell.extensions.tilingshell.gschema.xml
 │   │   └── org.gnome.shell.extensions.omnishell.ding.gschema.xml  # renamed
-│   └── locale/                    # 15 gettext catalogues (tilingshell domain)
+│   └── locale/                    # 14 gettext catalogues (tilingshell domain)
 ├── install.sh                     # Backup-safe installer
-├── verify_fixes.mjs               # 21-check regression harness
-├── verify_claims.mjs              # Original claim-verification harness
-└── check_schemas.sh               # Live schema inspection
+├── Makefile                       # Build, install and verification targets
+├── verify_fixes.mjs               # 44-check regression harness
+├── verify_round2.mjs              # 5 SortOrder round-trip checks
+├── verify_perf.mjs                # 10 dynamic-layout cache checks
+├── verify_ding_refresh.mjs        # 24 DING refresh checks
+├── verify_claims.mjs              # 26-claim verification harness
+├── verify_pins.mjs                # pin/livelock handling checks
+├── test_dyn.mjs                   # Dynamic-layout math tests
+└── check_syntax.mjs               # Path-independent syntax checker
 ```
 
 ## Appendix B — License & attribution

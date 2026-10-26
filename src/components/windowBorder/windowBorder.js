@@ -59,7 +59,8 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
     this._signals.disconnect();
     this._window = win;
     this.close();
-    const winActor = this._window.get_compositor_private();
+    const winActor = this._window?.get_compositor_private?.();
+    if (!winActor) return;
     this._bindings = [
       "scale-x",
       "scale-y",
@@ -144,13 +145,13 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
       this.open();
     });
     if (Settings.ENABLE_SMART_WINDOW_BORDER_RADIUS) {
-      const firstFrameId = winActor.connect_after("first-frame", () => {
+      this._signals.connect(winActor, "first-frame", () => {
+        this._signals.disconnect(winActor);
         if (this._window.maximizedHorizontally || this._window.maximizedVertically || this._window.is_fullscreen()) {
           this._delayedSmartBorderRadius = true;
           return;
         }
         this._runComputeBorderRadiusTimeout(winActor);
-        winActor.disconnect(firstFrameId);
       });
     }
   }
@@ -159,70 +160,77 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
     if (this._timeout) clearTimeout(this._timeout);
     this._timeout = void 0;
     this._timeout = setTimeout(() => {
-      this._computeBorderRadius(winActor).then(() => this.updateStyle());
+      this._computeBorderRadius(winActor).then(() => this.updateStyle()).catch(() => {});
       if (this._timeout) clearTimeout(this._timeout);
       this._timeout = void 0;
     }, SMART_BORDER_RADIUS_FIRST_FRAME_DELAY);
   }
 
   async _computeBorderRadius(winActor) {
-    const width = 3;
-    const height = winActor.metaWindow.get_frame_rect().height;
-    if (height <= 0) return;
-    const content = winActor.paint_to_content(
-      buildRectangle({
-        x: winActor.metaWindow.get_frame_rect().x,
-        y: winActor.metaWindow.get_frame_rect().y,
+    try {
+      if (!winActor || !winActor.metaWindow) return;
+      const width = 3;
+      const height = winActor.metaWindow.get_frame_rect().height;
+      if (height <= 0) return;
+      const content = winActor.paint_to_content(
+        buildRectangle({
+          x: winActor.metaWindow.get_frame_rect().x,
+          y: winActor.metaWindow.get_frame_rect().y,
+          height,
+          width
+        })
+      );
+      if (!content) return;
+      const texture = content.get_texture();
+      const stream = Gio.MemoryOutputStream.new_resizable();
+      const x = 0;
+      const y = 0;
+      const pixbuf = await Shell.Screenshot.composite_to_stream(
+        texture,
+        x,
+        y,
+        width,
         height,
-        width
-      })
-    );
-    if (!content) return;
-    const texture = content.get_texture();
-    const stream = Gio.MemoryOutputStream.new_resizable();
-    const x = 0;
-    const y = 0;
-    const pixbuf = await Shell.Screenshot.composite_to_stream(
-      texture,
-      x,
-      y,
-      width,
-      height,
-      1,
-      null,
-      0,
-      0,
-      1,
-      stream
-    );
-    const pixels = pixbuf.get_pixels();
-    const alphaThreshold = 240;
-    for (let i = 0; i < height; i++) {
-      if (pixels[i * width * 4 + 3] > alphaThreshold) {
-        this._borderRadiusValue[St.Corner.TOPLEFT] = i;
-        this._borderRadiusValue[St.Corner.TOPRIGHT] = this._borderRadiusValue[St.Corner.TOPLEFT];
-        break;
+        1,
+        null,
+        0,
+        0,
+        1,
+        stream
+      );
+      if (!pixbuf) return;
+      const pixels = pixbuf.get_pixels();
+      const alphaThreshold = 240;
+      for (let i = 0; i < height; i++) {
+        if (pixels[i * width * 4 + 3] > alphaThreshold) {
+          this._borderRadiusValue[St.Corner.TOPLEFT] = i;
+          this._borderRadiusValue[St.Corner.TOPRIGHT] = this._borderRadiusValue[St.Corner.TOPLEFT];
+          break;
+        }
       }
-    }
-    for (let i = height - 1; i >= height - this._borderRadiusValue[St.Corner.TOPLEFT] - 2; i--) {
-      if (pixels[i * width * 4 + 3] > alphaThreshold) {
-        this._borderRadiusValue[St.Corner.BOTTOMLEFT] = height - i - 1;
-        this._borderRadiusValue[St.Corner.BOTTOMRIGHT] = this._borderRadiusValue[St.Corner.BOTTOMLEFT];
-        break;
+      for (let i = height - 1; i >= height - this._borderRadiusValue[St.Corner.TOPLEFT] - 2; i--) {
+        if (pixels[i * width * 4 + 3] > alphaThreshold) {
+          this._borderRadiusValue[St.Corner.BOTTOMLEFT] = height - i - 1;
+          this._borderRadiusValue[St.Corner.BOTTOMRIGHT] = this._borderRadiusValue[St.Corner.BOTTOMLEFT];
+          break;
+        }
       }
+      stream.close(null);
+      const cached_radius = [
+        DEFAULT_BORDER_RADIUS,
+        DEFAULT_BORDER_RADIUS,
+        0,
+        0
+      ];
+      cached_radius[St.Corner.TOPLEFT] = this._borderRadiusValue[St.Corner.TOPLEFT];
+      cached_radius[St.Corner.TOPRIGHT] = this._borderRadiusValue[St.Corner.TOPRIGHT];
+      cached_radius[St.Corner.BOTTOMLEFT] = this._borderRadiusValue[St.Corner.BOTTOMLEFT];
+      cached_radius[St.Corner.BOTTOMRIGHT] = this._borderRadiusValue[St.Corner.BOTTOMRIGHT];
+      if (this._window) {
+        this._window.__ts_cached_radius = cached_radius;
+      }
+    } catch {
     }
-    stream.close(null);
-    const cached_radius = [
-      DEFAULT_BORDER_RADIUS,
-      DEFAULT_BORDER_RADIUS,
-      0,
-      0
-    ];
-    cached_radius[St.Corner.TOPLEFT] = this._borderRadiusValue[St.Corner.TOPLEFT];
-    cached_radius[St.Corner.TOPRIGHT] = this._borderRadiusValue[St.Corner.TOPRIGHT];
-    cached_radius[St.Corner.BOTTOMLEFT] = this._borderRadiusValue[St.Corner.BOTTOMLEFT];
-    cached_radius[St.Corner.BOTTOMRIGHT] = this._borderRadiusValue[St.Corner.BOTTOMRIGHT];
-    this._window.__ts_cached_radius = cached_radius;
   }
 
   updateStyle() {
@@ -291,12 +299,17 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
   open() {
     if (this.visible) return;
     this.show();
-    this.ease({
-      opacity: 255,
-      duration: 200,
-      mode: Clutter.AnimationMode.EASE,
-      delay: 130
-    });
+    const duration = Settings.TILE_PREVIEW_ANIMATION_TIME;
+    if (duration > 0) {
+      this.ease({
+        opacity: 255,
+        duration,
+        mode: Clutter.AnimationMode.EASE,
+        delay: 130
+      });
+    } else {
+      this.set_opacity(255);
+    }
   }
 
   close() {

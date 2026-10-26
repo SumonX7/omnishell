@@ -46,17 +46,25 @@ class SettingsOverride {
 
   _jsonToOverriddenKeys(json) {
     const result = /* @__PURE__ */ new Map();
-    const obj = JSON.parse(json);
-    for (const schemaId in obj) {
-      const schemaMap = /* @__PURE__ */ new Map();
-      result.set(schemaId, schemaMap);
-      const overrideObj = obj[schemaId];
-      for (const key in overrideObj) {
-        schemaMap.set(
-          key,
-          GLib.Variant.parse(null, overrideObj[key], null, null)
-        );
+    if (!json) return result;
+    try {
+      const obj = JSON.parse(json);
+      for (const schemaId in obj) {
+        const schemaMap = /* @__PURE__ */ new Map();
+        result.set(schemaId, schemaMap);
+        const overrideObj = obj[schemaId];
+        for (const key in overrideObj) {
+          try {
+            schemaMap.set(
+              key,
+              GLib.Variant.parse(null, overrideObj[key], null, null)
+            );
+          } catch {
+          }
+        }
       }
+    } catch {
+      return result;
     }
     return result;
   }

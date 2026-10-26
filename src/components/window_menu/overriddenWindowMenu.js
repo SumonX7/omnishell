@@ -10,10 +10,12 @@ import Settings from "../../settings/settings.js";
 import { registerGObjectClass } from "../../utils/gjs.js";
 import Tile from "../../components/layout/Tile.js";
 import {
+  buildRectangle,
   enableScalingFactorSupport,
   getMonitorScalingFactor,
   getWindows
 } from "../../utils/ui.js";
+import { isDesktopWindow } from "../../utils/desktopFilter.js";
 import TileUtils from "../../components/layout/TileUtils.js";
 import LayoutTileButtons from "./layoutTileButtons.js";
 import { buildMarginOf } from "../../utils/ui.js";
@@ -74,23 +76,30 @@ const _OverriddenWindowMenu = class _OverriddenWindowMenu extends GObject.Object
   newBuildMenu(window) {
     const oldFunction = _OverriddenWindowMenu._old_buildMenu?.bind(this);
     if (oldFunction) oldFunction(window);
-    if (Settings.ENABLE_DYNAMIC_TILING) return;
+    if (!window || isDesktopWindow(window) || Settings.ENABLE_DYNAMIC_TILING) return;
     const layouts = GlobalState.get().layouts;
     if (layouts.length === 0) return;
-    const workArea = Main.layoutManager.getWorkAreaForMonitor(
-      window.get_monitor()
-    );
-    const tiledWindows = getWindows().map((otherWindow) => {
-      return otherWindow && !otherWindow.minimized && otherWindow.assignedTile ? otherWindow : void 0;
-    }).filter((w) => w !== void 0);
+    const monitorIndex = window.get_monitor();
+    const workArea = Main.layoutManager.getWorkAreaForMonitor(monitorIndex);
+    const windowWorkspace = window.get_workspace?.() || global.workspaceManager.get_active_workspace();
+    const tiledWindows = getWindows(windowWorkspace).filter((otherWindow) => {
+      return otherWindow && !otherWindow.minimized && otherWindow.assignedTile && otherWindow.get_monitor() === monitorIndex;
+    });
     const tiles = GlobalState.get().getSelectedLayoutOfMonitor(
-      window.get_monitor(),
-      global.workspaceManager.get_active_workspace_index()
-    ).tiles;
+      monitorIndex,
+      windowWorkspace.index?.() ?? 0
+    )?.tiles ?? [];
+    const innerGaps = Settings.get_inner_gaps();
     const vacantTiles = tiles.filter((t) => {
       const tileRect = TileUtils.apply_props(t, workArea);
+      const innerRect = buildRectangle({
+        x: tileRect.x + innerGaps.left,
+        y: tileRect.y + innerGaps.top,
+        width: Math.max(0, tileRect.width - innerGaps.left - innerGaps.right),
+        height: Math.max(0, tileRect.height - innerGaps.top - innerGaps.bottom)
+      });
       return !tiledWindows.find(
-        (win) => tileRect.overlap(win.get_frame_rect())
+        (win) => innerRect.overlap(win.get_frame_rect())
       );
     });
     const enableScaling = window.get_monitor() === Main.layoutManager.primaryIndex;

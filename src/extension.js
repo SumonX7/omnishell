@@ -29,6 +29,7 @@ import {
 } from "./utils/ui.js";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { TilingManager } from "./components/tilingsystem/tilingManager.js";
+import { TilingDragCoordinator } from "./components/tilingsystem/dragCoordinator.js";
 import Settings from "./settings/settings.js";
 import SignalHandling from "./utils/signalHandling.js";
 import GlobalState from "./utils/globalState.js";
@@ -52,6 +53,7 @@ const debug = logger("extension");
 class TilingShellExtension extends Extension {
   _indicator;
   _tilingManagers;
+  _tilingDragCoordinator;
   _fractionalScalingEnabled;
   _dbus;
   _signals;
@@ -65,6 +67,7 @@ class TilingShellExtension extends Extension {
     this._signals = null;
     this._fractionalScalingEnabled = false;
     this._tilingManagers = [];
+    this._tilingDragCoordinator = null;
     this._indicator = null;
     this._dbus = null;
     this._keybindings = null;
@@ -105,15 +108,21 @@ class TilingShellExtension extends Extension {
    * "migrations already applied" key, and the shortcut array is mapped
    * entry by entry.
    */
-  _validateSettings() {
+  _validateSettings(freshInstall = false) {
     const migrationsKey = "omnishell-migrations-applied";
     const applied = new Set(
       (Settings.gioSetting.get_strv(migrationsKey) || []).filter(Boolean)
     );
 
     if (!applied.has("17.0-border-color")) {
-      debug("apply compatibility changes: 17.0 border colour");
-      Settings.WINDOW_USE_CUSTOM_BORDER_COLOR = Settings.ENABLE_WINDOW_BORDER;
+      // A fresh install already has the correct value from `_onInstall()`
+      // (custom colour on GNOME < 47, accent colour afterwards). Running the
+      // upgrade migration would overwrite it with whatever the border switch
+      // happens to be, so only existing installations need the migration.
+      if (!freshInstall) {
+        debug("apply compatibility changes: 17.0 border colour");
+        Settings.WINDOW_USE_CUSTOM_BORDER_COLOR = Settings.ENABLE_WINDOW_BORDER;
+      }
       applied.add("17.0-border-color");
     }
 
@@ -147,14 +156,26 @@ class TilingShellExtension extends Extension {
   enable() {
     if (this._signals) this._signals.disconnect();
     this._signals = new SignalHandling();
+    // A re-enable must not leave a second set of global drag handlers
+    // connected. The coordinator owns those handlers and the pointer tracker
+    // for the whole extension.
+    if (this._tilingDragCoordinator) {
+      this._tilingDragCoordinator.destroy();
+      this._tilingDragCoordinator = null;
+    }
+    this._tilingDragCoordinator = new TilingDragCoordinator(
+      () => this._tilingManagers
+    );
+    this._tilingDragCoordinator.enable();
     Settings.initialize(this.getSettings());
-    if (Settings.LAST_VERSION_NAME_INSTALLED === "0") {
+    const freshInstall = Settings.LAST_VERSION_NAME_INSTALLED === "0";
+    if (freshInstall) {
       this._onInstall();
       if (this.metadata["version-name"]) {
         Settings.LAST_VERSION_NAME_INSTALLED = this.metadata["version-name"] || "0";
       }
     }
-    this._validateSettings();
+    this._validateSettings(freshInstall);
     TilingShellWindowManager.get();
     this._fractionalScalingEnabled = this._isFractionalScalingEnabled(
       new Gio.Settings({ schema: "org.gnome.mutter" })
@@ -208,6 +229,10 @@ class TilingShellExtension extends Extension {
 
   _createTilingManagers() {
     debug("building a tiling manager for each monitor");
+    // Monitor hotplug or a scaling change can replace the managers while a
+    // window is being dragged. End that drag against the old managers before
+    // they are destroyed.
+    this._tilingDragCoordinator?.abort();
     this._tilingManagers.forEach((tm) => tm.destroy());
     this._tilingManagers = getMonitors().map(
       (monitor) => new TilingManager(monitor, !this._fractionalScalingEnabled)
@@ -215,8 +240,51 @@ class TilingShellExtension extends Extension {
     this._tilingManagers.forEach((tm) => tm.enable());
   }
 
+  /**
+   * The manager that owns the monitor a window is on. During window creation
+   * mutter may not have assigned a monitor yet; the primary monitor is the
+   * same fallback the window itself would use.
+   */
+  _managerForWindow(window) {
+    const monitorIndex = window?.get_monitor?.() ?? -1;
+    return this._tilingManagers[monitorIndex] ??
+      this._tilingManagers[Main.layoutManager.primaryIndex] ??
+      this._tilingManagers[0] ??
+      null;
+  }
+
   _setupSignals() {
     if (!this._signals) return;
+    // "window-created" used to be connected by every monitor manager, so a
+    // single new window ran the maximize/auto-tile logic once per monitor and
+    // every dynamic manager tried to track it. Route it to its owner once.
+    this._signals.connect(global.display, "window-created", (_display, window) => {
+      this._managerForWindow(window)?.onWindowCreated(window);
+    });
+    // Hand a dynamic window over as it crosses monitors. This replaces the
+    // per-window "position-changed" monitor poll, which cost a mutter round
+    // trip on every pointer event of every dragged window.
+    this._signals.connect(
+      global.display,
+      "window-entered-monitor",
+      (_display, monitorIndex, window) => {
+        if (!Settings.ENABLE_DYNAMIC_TILING) return;
+        const target = this._tilingManagers[monitorIndex];
+        if (!target) return;
+        for (const manager of this._tilingManagers) {
+          if (manager !== target) manager.onWindowLeftMonitor(window);
+        }
+        target.onWindowEnteredMonitor(window);
+      }
+    );
+    // Maximize state changes also belong to one manager, not to all of them.
+    const shellWindowManager = TilingShellWindowManager.get();
+    this._signals.connect(shellWindowManager, "unmaximized", (_wm, window) => {
+      this._managerForWindow(window)?.onWindowUnmaximized(window);
+    });
+    this._signals.connect(shellWindowManager, "maximized", (_wm, window) => {
+      this._managerForWindow(window)?.onWindowMaximized(window);
+    });
     this._signals.connect(global.display, "workareas-changed", () => {
       const allMonitors = getMonitors();
       if (this._tilingManagers.length !== allMonitors.length) {
@@ -244,7 +312,7 @@ class TilingShellExtension extends Extension {
         if (this._windowBorderManager)
           this._windowBorderManager.destroy();
         this._windowBorderManager = new WindowBorderManager(
-          this._fractionalScalingEnabled
+          !this._fractionalScalingEnabled
         );
         this._windowBorderManager.enable();
       }
@@ -269,6 +337,7 @@ class TilingShellExtension extends Extension {
         "span-window-all-tiles",
         (kb, dp) => {
           const window = dp.focus_window;
+          if (!window) return;
           const monitorIndex = window.get_monitor();
           const manager = this._tilingManagers[monitorIndex];
           if (manager) manager.onSpanAllTiles(window);
@@ -319,7 +388,8 @@ class TilingShellExtension extends Extension {
         this._keybindings,
         "highlight-current-window",
         (kb, dp) => {
-          const focus_window = dp.get_focus_window();
+          const focus_window = dp.focus_window || dp.get_focus_window?.();
+          if (!focus_window) return;
           getWindows(
             global.workspaceManager.get_active_workspace()
           ).forEach((win) => {
@@ -535,8 +605,9 @@ class TilingShellExtension extends Extension {
       x: focusWindowRect.x + focusWindowRect.width / 2,
       y: focusWindowRect.y + focusWindowRect.height / 2
     };
+    const ws = focus_window.get_workspace() || global.workspaceManager?.get_active_workspace?.();
     const windowList = filterUnfocusableWindows(
-      focus_window.get_workspace().list_windows()
+      ws?.list_windows?.() ?? []
     );
     const onlyTiledWindows = Settings.ENABLE_DIRECTIONAL_FOCUS_TILED_ONLY;
     windowList.filter((win) => {
@@ -578,20 +649,27 @@ class TilingShellExtension extends Extension {
     const focus_window = display.get_focus_window();
     if (!focus_window || !focus_window.has_focus() || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs")
       return;
+    const ws = focus_window.get_workspace() || global.workspaceManager?.get_active_workspace?.();
     const windowList = filterUnfocusableWindows(
-      focus_window.get_workspace().list_windows()
+      ws?.list_windows?.() ?? []
     );
     const focusParent = focus_window.get_transient_for() || focus_window;
     const focusedIdx = windowList.findIndex((win) => {
       return win === focusParent;
     });
+    // The focused window can be absent from the filtered list (for example
+    // when a desktop-canvas window or a transient dialog owns focus), and
+    // an empty list yields -1 as well. Indexing with -1/NaN would throw.
+    if (focusedIdx < 0) return;
     let nextIndex = -1;
     switch (direction) {
       case FocusSwitchDirection.PREV:
-        if (focusedIdx === 0 && Settings.WRAPAROUND_FOCUS) {
-          windowList[windowList.length - 1].activate(
-            global.get_current_time()
-          );
+        if (focusedIdx === 0) {
+          if (Settings.WRAPAROUND_FOCUS) {
+            windowList[windowList.length - 1].activate(
+              global.get_current_time()
+            );
+          }
         } else {
           windowList[focusedIdx - 1].activate(
             global.get_current_time()
@@ -624,14 +702,22 @@ class TilingShellExtension extends Extension {
   }
 
   disable() {
+    // Disconnect extension-level handlers before destroying the objects they
+    // are attached to: the indicator emits "open-preferences", and after
+    // `Indicator.destroy()` its GObject is disposed, so disconnecting then
+    // would log "has been already disposed".
+    this._signals?.disconnect();
+    this._signals = null;
     this._keybindings?.destroy();
     this._keybindings = null;
     this._indicator?.destroy();
     this._indicator = null;
+    // The coordinator ends any in-flight drag and fans the end out to the
+    // managers, so it must go before the managers it calls into.
+    this._tilingDragCoordinator?.destroy();
+    this._tilingDragCoordinator = null;
     this._tilingManagers.forEach((tm) => tm.destroy());
     this._tilingManagers = [];
-    this._signals?.disconnect();
-    this._signals = null;
     this._resizingManager?.destroy();
     this._resizingManager = null;
     this._windowBorderManager?.destroy();
