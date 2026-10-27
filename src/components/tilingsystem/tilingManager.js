@@ -1509,13 +1509,18 @@ class TilingManager {
 
   _easeWindowRectFromTile(tile, window, skipAnimation = false) {
     if (!window || isDesktopWindow(window)) return;
-    const currentWs = window.get_workspace();
+    const currentWs = window.get_workspace?.() ?? global.workspaceManager.get_active_workspace();
     const tilingLayout = this._workspaceTilingLayout.get(currentWs);
     if (!tilingLayout) return;
     const scaledRect = TileUtils.apply_props(tile, this._workArea);
     const destinationRect = this._windowRectForTile(tile, tilingLayout);
     if (!destinationRect) return;
-    const isMaximized = window.maximizedHorizontally || window.maximizedVertically;
+    const isMaximized = Boolean(
+      window.maximizedHorizontally ||
+      window.maximizedVertically ||
+      window.maximized_horizontally ||
+      window.maximized_vertically
+    );
     const rememberOriginalSize = !isMaximized;
     if (isMaximized) this._unmaximizeForPlacement(window);
     if (rememberOriginalSize && !window.assignedTile) {
@@ -1770,7 +1775,9 @@ class TilingManager {
    * unmaximized on placement instead, by `_easeWindowRectFromTile`.
    */
   _isDynamicTrackable(window) {
-    if (window !== null && window.windowType === Meta.WindowType.NORMAL && window.get_transient_for() === null && !window.is_attached_dialog()) {
+    if (!window) return false;
+    const winType = typeof window.get_window_type === "function" ? window.get_window_type() : (window.window_type ?? window.windowType);
+    if (winType === Meta.WindowType.NORMAL && window.get_transient_for() === null && !window.is_attached_dialog()) {
       if (isDesktopWindow(window)) return false;
       return !this._isExcludedFromTiling(window);
     }
@@ -1787,7 +1794,9 @@ class TilingManager {
    * that must reflow. Returns false when the window is not ours to place.
    */
   _trackDynamicWindow(window) {
-    if (window.get_monitor() !== this._monitor.index) return false;
+    const winMonitor = typeof window?.get_monitor === "function" ? window.get_monitor() : -1;
+    const isPrimaryManager = this._monitor.index === (Main.layoutManager.primaryIndex ?? 0);
+    if (winMonitor >= 0 ? winMonitor !== this._monitor.index : !isPrimaryManager) return false;
     if (!this._isDynamicTrackable(window)) return false;
     if (this._dynamicWindowSignals.has(window)) return false;
     this._dynamicWindows.push(window);
@@ -1943,7 +1952,9 @@ class TilingManager {
    */
   _syncDynamicOwnership(window) {
     if (!Settings.ENABLE_DYNAMIC_TILING || !isWindowAlive(window)) return;
-    const shouldOwn = window.get_monitor() === this._monitor.index;
+    const winMonitor = typeof window?.get_monitor === "function" ? window.get_monitor() : -1;
+    const isPrimaryManager = this._monitor.index === (Main.layoutManager.primaryIndex ?? 0);
+    const shouldOwn = winMonitor >= 0 ? winMonitor === this._monitor.index : isPrimaryManager;
     const owns = this._dynamicWindowSignals.has(window);
     if (owns === shouldOwn) return;
     if (shouldOwn) this._adoptDynamicWindow(window);
@@ -1994,7 +2005,7 @@ class TilingManager {
    * this window instead of being rebuilt from scratch.
    */
   _markDynamicNewcomer(window) {
-    const ws = window.get_workspace();
+    const ws = window?.get_workspace?.() ?? global.workspaceManager.get_active_workspace();
     const focused = global.display.focus_window;
     const focusedIsManaged = focused && ws ? this._dynamicManagedWindows(ws).includes(focused) : false;
     this._dynamicNewcomers.add(window);
@@ -2213,9 +2224,14 @@ class TilingManager {
     const cached = this._dynamicManagedCache.get(ws);
     if (cached && cached.revision === this._managedRevision) return cached.windows;
 
-    const windows = this._dynamicWindows.filter(
-      (w) => this._isDynamicEligible(w) && w.get_workspace() === ws && w.get_monitor() === this._monitor.index
-    );
+    const isPrimaryManager = this._monitor.index === (Main.layoutManager.primaryIndex ?? 0);
+    const windows = this._dynamicWindows.filter((w) => {
+      if (!this._isDynamicEligible(w)) return false;
+      const windowWs = w.get_workspace?.() ?? global.workspaceManager.get_active_workspace();
+      if (windowWs !== ws) return false;
+      const winMonitor = typeof w.get_monitor === "function" ? w.get_monitor() : -1;
+      return winMonitor >= 0 ? winMonitor === this._monitor.index : isPrimaryManager;
+    });
     this._dynamicManagedCache.set(ws, {
       windows,
       revision: this._managedRevision
@@ -2342,9 +2358,12 @@ class TilingManager {
   }
 
   _autoTile(window, windowCreated) {
-    if (!window || isDesktopWindow(window) || window.windowType !== Meta.WindowType.NORMAL || window.get_transient_for() !== null || window.is_attached_dialog() || window.minimized || window.maximizedHorizontally || window.maximizedVertically)
+    const winType = typeof window?.get_window_type === "function" ? window.get_window_type() : (window?.window_type ?? window?.windowType);
+    if (!window || isDesktopWindow(window) || winType !== Meta.WindowType.NORMAL || window.get_transient_for() !== null || window.is_attached_dialog() || window.minimized || window.maximizedHorizontally || window.maximizedVertically || window.maximized_horizontally || window.maximized_vertically)
       return;
-    if (window.get_monitor() !== this._monitor.index) return;
+    const winMonitor = typeof window?.get_monitor === "function" ? window.get_monitor() : -1;
+    const isPrimaryManager = this._monitor.index === (Main.layoutManager.primaryIndex ?? 0);
+    if (winMonitor >= 0 ? winMonitor !== this._monitor.index : !isPrimaryManager) return;
     if (this._isExcludedFromTiling(window)) return;
     if (window.omnishellIntentionalMaximize) return;
     window.assignedTile = void 0;
@@ -2356,7 +2375,7 @@ class TilingManager {
       this._signals.connect(windowActor, "first-frame", () => {
         this._signals.disconnect(windowActor);
         if (isDesktopWindow(window)) return;
-        if (!window.minimized && !window.maximizedHorizontally && !window.maximizedVertically && window.get_transient_for() === null && !window.is_attached_dialog())
+        if (!window.minimized && !window.maximizedHorizontally && !window.maximizedVertically && !window.maximized_horizontally && !window.maximized_vertically && window.get_transient_for() === null && !window.is_attached_dialog())
           this._easeWindowRectFromTile(vacantTile, window, true);
       });
     } else {
@@ -2370,19 +2389,21 @@ class TilingManager {
     // the active one: a window that is being placed on a background workspace
     // would otherwise be matched against the layout of whatever workspace the
     // user is currently looking at.
-    const windowWorkspace = window.get_workspace();
+    const windowWorkspace = window?.get_workspace?.() ?? global.workspaceManager.get_active_workspace();
     const workspaceIndex = windowWorkspace?.index?.() ?? global.workspaceManager.get_active_workspace_index();
     const tilingLayout = this._workspaceTilingLayout.get(windowWorkspace);
     if (!tilingLayout) return void 0;
     const tiledWindows = getWindows(windowWorkspace).filter((otherWindow) => {
-      return otherWindow && otherWindow.assignedTile && !otherWindow.minimized && !otherWindow.maximizedVertically && !otherWindow.maximizedHorizontally;
+      return otherWindow && otherWindow.assignedTile && !otherWindow.minimized && !otherWindow.maximizedVertically && !otherWindow.maximizedHorizontally && !otherWindow.maximized_vertically && !otherWindow.maximized_horizontally;
     }).map((w) => w);
+    const winMonitor = typeof window?.get_monitor === "function" ? window.get_monitor() : -1;
+    const effectiveMonitor = winMonitor >= 0 ? winMonitor : this._monitor.index;
     const tiles = GlobalState.get().getSelectedLayoutOfMonitor(
-      window.get_monitor(),
+      effectiveMonitor,
       workspaceIndex
     ).tiles;
     const workArea = Main.layoutManager.getWorkAreaForMonitor(
-      window.get_monitor()
+      effectiveMonitor
     );
     const vacantTiles = tiles.filter((t) => {
       // The tile rectangle produced by `apply_props` includes the inner

@@ -35,15 +35,15 @@ function isDesktopWindow(window) {
   }
   try {
     const wmClass = window.get_wm_class?.();
-    if (wmClass && (DING_APP_IDS.has(wmClass) || wmClass.includes("ding") || wmClass.includes("omnishell"))) {
+    if (wmClass && (DING_APP_IDS.has(wmClass) || wmClass === "ding" || wmClass.startsWith("com.spark.omnishell.ding") || wmClass.startsWith("com.rastersoft.ding"))) {
       return true;
     }
     const gtkId = window.get_gtk_application_id?.();
-    if (gtkId && (DING_APP_IDS.has(gtkId) || gtkId.includes("ding") || gtkId.includes("omnishell"))) {
+    if (gtkId && (DING_APP_IDS.has(gtkId) || gtkId === "ding" || gtkId.startsWith("com.spark.omnishell.ding") || gtkId.startsWith("com.rastersoft.ding"))) {
       return true;
     }
     const sandboxId = window.get_sandboxed_app_id?.();
-    if (sandboxId && (DING_APP_IDS.has(sandboxId) || sandboxId.includes("ding"))) {
+    if (sandboxId && (DING_APP_IDS.has(sandboxId) || sandboxId === "ding" || sandboxId.startsWith("com.rastersoft.ding"))) {
       return true;
     }
   } catch {

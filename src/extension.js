@@ -623,9 +623,10 @@ class TilingShellExtension extends Extension {
 
   _onKeyboardUntileWindow(kb, display) {
     const focus_window = display.get_focus_window();
-    if (!focus_window || !focus_window.has_focus() || focus_window.windowType !== Meta.WindowType.NORMAL || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs" || isDesktopWindow(focus_window))
+    const winType = typeof focus_window?.get_window_type === "function" ? focus_window.get_window_type() : (focus_window?.window_type ?? focus_window?.windowType);
+    if (!focus_window || !focus_window.has_focus() || winType !== Meta.WindowType.NORMAL || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs" || isDesktopWindow(focus_window))
       return;
-    if (focus_window.maximizedHorizontally || focus_window.maximizedVertically)
+    if (focus_window.maximizedHorizontally || focus_window.maximizedVertically || focus_window.maximized_horizontally || focus_window.maximized_vertically)
       unmaximizeWindow(focus_window);
     const monitorTilingManager = this._tilingManagers[focus_window.get_monitor()];
     if (!monitorTilingManager) return;

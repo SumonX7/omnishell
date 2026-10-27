@@ -568,6 +568,35 @@ const check = (id, description, ok, evidence) => {
     minimize && unminimize, `minimize=${minimize}, unminimize=${unminimize}`);
 }
 
+// --- P3-DYNAMIC-WINDOWTYPE: safe window type introspection ---
+{
+  const tm = read('components/tilingsystem/tilingManager.js');
+  const ext = read('extension.js');
+  const tmUsesSafeType = /get_window_type/.test(tm) && !/_isDynamicTrackable\(window\)[\s\S]{0,100}?window\.windowType === Meta\.WindowType\.NORMAL/.test(tm);
+  const extUsesSafeType = /get_window_type/.test(ext) && !/_onKeyboardUntileWindow[\s\S]{0,150}?focus_window\.windowType === Meta\.WindowType\.NORMAL/.test(ext);
+  check('P3-DYNAMIC-WINDOWTYPE', 'window type check uses safe get_window_type across managers',
+    tmUsesSafeType && extUsesSafeType, `tmSafe=${tmUsesSafeType}, extSafe=${extUsesSafeType}`);
+}
+
+// --- P3-DYNAMIC-UNASSIGNED-MONITOR: unassigned monitor at creation (-1) fallback to primary manager ---
+{
+  const tm = read('components/tilingsystem/tilingManager.js');
+  const trackHandlesUnassigned = /_trackDynamicWindow\(window\)[\s\S]{0,350}?winMonitor\s*>=\s*0\s*\?\s*winMonitor\s*!==\s*this\._monitor\.index\s*:\s*!isPrimaryManager/.test(tm);
+  const managedHandlesUnassigned = /_dynamicManagedWindows\(ws\)[\s\S]{0,1000}?winMonitor\s*>=\s*0\s*\?\s*winMonitor\s*===\s*this\._monitor\.index\s*:\s*isPrimaryManager/.test(tm);
+  check('P3-DYNAMIC-UNASSIGNED-MONITOR', 'trackDynamicWindow and dynamicManagedWindows accept unassigned monitor (-1) on primary manager',
+    trackHandlesUnassigned && managedHandlesUnassigned,
+    `trackHandlesUnassigned=${trackHandlesUnassigned}, managedHandlesUnassigned=${managedHandlesUnassigned}`);
+}
+
+// --- P3-DYNAMIC-WORKSPACE-FALLBACK: newly created window workspace null fallback ---
+{
+  const tm = read('components/tilingsystem/tilingManager.js');
+  const easeFallback = /_easeWindowRectFromTile[\s\S]{0,150}?get_workspace\?\.\(\)\s*\?\?\s*global\.workspaceManager\.get_active_workspace\(\)/.test(tm);
+  const newcomerFallback = /_markDynamicNewcomer[\s\S]{0,150}?get_workspace\?\.\(\)\s*\?\?\s*global\.workspaceManager\.get_active_workspace\(\)/.test(tm);
+  check('P3-DYNAMIC-WORKSPACE-FALLBACK', 'easeWindowRectFromTile and markDynamicNewcomer fall back to active workspace when workspace is not yet set',
+    easeFallback && newcomerFallback, `easeFallback=${easeFallback}, newcomerFallback=${newcomerFallback}`);
+}
+
 // ==== OUTPUT ====
 const ok = results.filter(r => r.ok);
 const bad = results.filter(r => !r.ok);
