@@ -18,7 +18,6 @@
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
-var _a;
 import { Gtk, Adw, Gio, GLib, Gdk, GObject } from "./gi/prefs.js";
 import Settings from "./settings/settings.js";
 import { EdgeTilingMode, ActivationKey } from "./settings/settings.js";
@@ -1215,7 +1214,7 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
     });
     const versionStr = this.metadata?.["version-name"]
       ? `v${this.metadata["version-name"]}`
-      : (this.metadata?.version ? `v${this.metadata.version}` : "v1.0.6");
+      : (this.metadata?.version ? `v${this.metadata.version}` : "v1.0.7");
     const badgeLabel = new Gtk.Label({
       label: `${_("OmniShell Fusion")} (${versionStr}) \u2022 ${_("Built for GNOME Shell")}`
     });

@@ -113,7 +113,22 @@ export var DesktopManager = class {
         this._desktopUpdateSourceId = 0;
         this._readingDesktopFiles = false;
         this._desktopDir = DesktopIconsUtil.getDesktopDir();
-        this.desktopFsId = this._desktopDir.query_info('id::filesystem', Gio.FileQueryInfoFlags.NONE, null).get_attribute_string('id::filesystem');
+        this.desktopFsId = null;
+        this._desktopDir.query_info_async(
+            'id::filesystem',
+            Gio.FileQueryInfoFlags.NONE,
+            GLib.PRIORITY_DEFAULT,
+            null,
+            (source, result) => {
+                try {
+                    const info = source.query_info_finish(result);
+                    this.desktopFsId = info.get_attribute_string('id::filesystem');
+                } catch (e) {
+                    console.error(e, 'Error querying desktop filesystem id');
+                    this.desktopFsId = '';
+                }
+            }
+        );
         this._updateWritableByOthers();
         this._monitorDesktopDir = this._desktopDir.monitor_directory(Gio.FileMonitorFlags.WATCH_MOVES, null);
         this._monitorDesktopDir.set_rate_limit(1000);
@@ -638,8 +653,10 @@ export var DesktopManager = class {
             this.rubberBand = false;
             this.selectionRectangle = null;
         }
-        for (const grid of this._desktops)
+        for (const grid of this._desktops) {
             grid.queue_draw();
+            grid._rubberBandVisible = false;
+        }
 
         return false;
     }
@@ -1120,8 +1137,13 @@ export var DesktopManager = class {
             this.y1 = Math.floor(Math.min(y, this.rubberBandInitY));
             this.y2 = Math.floor(Math.max(y, this.rubberBandInitY));
             this.selectionRectangle = new Gdk.Rectangle({'x': this.x1, 'y': this.y1, 'width': this.x2 - this.x1, 'height': this.y2 - this.y1});
-            for (const grid of this._desktops)
-                grid.queue_draw();
+            for (const grid of this._desktops) {
+                const [intersects] = this.selectionRectangle.intersect(grid.gridGlobalRectangle);
+                if (intersects || grid._rubberBandVisible) {
+                    grid.queue_draw();
+                    grid._rubberBandVisible = intersects;
+                }
+            }
 
             for (const item of this._fileList) {
                 if (item.checkIntersects(this.selectionRectangle)) {
@@ -1541,13 +1563,6 @@ export var DesktopManager = class {
         this._scheduleDesktopUpdate('Directory Monitor');
     }
 
-    _getClipboardText() {
-        const selection = this.getCurrentSelection(true);
-        if (selection)
-            return new GLib.Variant('as', selection);
-        else
-            return new GLib.Variant('as', []);
-    }
 
     doCopy() {
         dndClipboardUtils.manageCutCopy({copy: true, fileList: this.getCurrentSelection(false)});
@@ -1957,74 +1972,23 @@ export var DesktopManager = class {
 
         this._fileList.map(f => f.removeFromGrid(false));
         const cornerInversion = Prefs.getStartCorner();
-        if (!cornerInversion[0] && !cornerInversion[1]) {
-            this._fileList.sort((a, b) => {
-                if (a._x1 < b._x1)
-                    return -1;
+        const xMul = cornerInversion[0] ? -1 : 1;
+        const yMul = cornerInversion[1] ? -1 : 1;
+        this._fileList.sort((a, b) => {
+            if (a._x1 < b._x1)
+                return -xMul;
 
-                if (a._x1 > b._x1)
-                    return 1;
+            if (a._x1 > b._x1)
+                return xMul;
 
-                if (a._y1 < b._y1)
-                    return -1;
+            if (a._y1 < b._y1)
+                return -yMul;
 
-                if (a._y1 > b._y1)
-                    return 1;
+            if (a._y1 > b._y1)
+                return yMul;
 
-                return 0;
-            });
-        }
-        if (cornerInversion[0] && cornerInversion[1]) {
-            this._fileList.sort((a, b) => {
-                if (a._x1 < b._x1)
-                    return 1;
-
-                if (a._x1 > b._x1)
-                    return -1;
-
-                if (a._y1 < b._y1)
-                    return 1;
-
-                if (a._y1 > b._y1)
-                    return -1;
-
-                return 0;
-            });
-        }
-        if (cornerInversion[0] && !cornerInversion[1]) {
-            this._fileList.sort((a, b) => {
-                if (a._x1 < b._x1)
-                    return 1;
-
-                if (a._x1 > b._x1)
-                    return -1;
-
-                if (a._y1 < b._y1)
-                    return -1;
-
-                if (a._y1 > b._y1)
-                    return 1;
-
-                return 0;
-            });
-        }
-        if (!cornerInversion[0] && cornerInversion[1]) {
-            this._fileList.sort((a, b) => {
-                if (a._x1 < b._x1)
-                    return -1;
-
-                if (a._x1 > b._x1)
-                    return 1;
-
-                if (a._y1 < b._y1)
-                    return 1;
-
-                if (a._y1 > b._y1)
-                    return -1;
-
-                return 0;
-            });
-        }
+            return 0;
+        });
         this._reassignFilesToDesktop();
     }
 

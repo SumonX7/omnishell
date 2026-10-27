@@ -62,6 +62,7 @@ class TilingShellExtension extends Extension {
   _windowBorderManager;
   _raiseTogetherManager;
   _dingBridge;
+  _mutterSettings;
   constructor(metadata) {
     super(metadata);
     this._signals = null;
@@ -75,6 +76,7 @@ class TilingShellExtension extends Extension {
     this._windowBorderManager = null;
     this._raiseTogetherManager = null;
     this._dingBridge = null;
+    this._mutterSettings = null;
   }
 
   createIndicator() {
@@ -177,14 +179,15 @@ class TilingShellExtension extends Extension {
     }
     this._validateSettings(freshInstall);
     TilingShellWindowManager.get();
+    this._mutterSettings = new Gio.Settings({ schemaId: "org.gnome.mutter" });
     this._fractionalScalingEnabled = this._isFractionalScalingEnabled(
-      new Gio.Settings({ schema: "org.gnome.mutter" })
+      this._mutterSettings
     );
     if (this._keybindings) this._keybindings.destroy();
     this._keybindings = new KeyBindings(this.getSettings());
     if (Settings.ACTIVE_SCREEN_EDGES) {
       SettingsOverride.get().override(
-        new Gio.Settings({ schemaId: "org.gnome.mutter" }),
+        this._mutterSettings,
         "edge-tiling",
         new GLib.Variant("b", false)
       );
@@ -297,7 +300,7 @@ class TilingShellExtension extends Extension {
       }
     });
     this._signals.connect(
-      new Gio.Settings({ schema: "org.gnome.mutter" }),
+      this._mutterSettings,
       "changed::experimental-features",
       (_mutterSettings) => {
         if (!_mutterSettings) return;
@@ -420,20 +423,17 @@ class TilingShellExtension extends Extension {
       Settings,
       Settings.KEY_ACTIVE_SCREEN_EDGES,
       () => {
-        const gioSettings = new Gio.Settings({
-          schemaId: "org.gnome.mutter"
-        });
         if (Settings.ACTIVE_SCREEN_EDGES) {
           debug("disable native edge tiling");
           SettingsOverride.get().override(
-            gioSettings,
+            this._mutterSettings,
             "edge-tiling",
             new GLib.Variant("b", false)
           );
         } else {
           debug("bring back native edge tiling");
           SettingsOverride.get().restoreKey(
-            gioSettings,
+            this._mutterSettings,
             "edge-tiling"
           );
         }
@@ -463,79 +463,6 @@ class TilingShellExtension extends Extension {
     });
   }
 
-  /* todo private _moveMaximizedToWorkspace(
-          wm: Shell.WM,
-          winActor: Meta.WindowActor,
-          change: Meta.SizeChange,
-      ) {
-          const window = winActor.metaWindow;
-          if (
-              window.wmClass === null ||
-              change !== Meta.SizeChange.MAXIMIZE || // handle maximize changes only
-              (window.maximizedHorizontally && window.maximizedVertically) || // handle maximized window only
-              window.is_attached_dialog() || // skip dialogs
-              window.is_on_all_workspaces() ||
-              window.windowType !== Meta.WindowType.NORMAL || // handle normal windows only
-              window.wmClass === 'gjs'
-          )
-              return;
-  
-          const prevWorkspace = window.get_workspace();
-          // if it is the only window in the workspace, no new workspace is needed
-          if (
-              !prevWorkspace
-                  .list_windows()
-                  .find(
-                      (otherWin) =>
-                          otherWin !== window &&
-                          otherWin.windowType === Meta.WindowType.NORMAL &&
-                          !otherWin.is_always_on_all_workspaces() &&
-                          otherWin.wmClass !== null &&
-                          otherWin.wmClass !== 'gjs',
-                  )
-          )
-              return;
-  
-          // disable GNOME default fade out animation
-          // @ts-expect-error Main.wm has "_sizeChangeWindowDone" function
-          Main.wm._sizeChangeWindowDone(global.windowManager, winActor);
-  
-          const wasActive = prevWorkspace.active;
-          // create a new workspace, do not focus it
-          const newWorkspace = global.workspace_manager.append_new_workspace(
-              false,
-              global.get_current_time(),
-          );
-          // place the workspace after the current one
-          global.workspace_manager.reorder_workspace(
-              newWorkspace,
-              prevWorkspace.index() + 1,
-          );
-          // queue focus the workspace, focusing the window too. This will trigger workspace slide-in animation
-          if (wasActive) window._queue_focus_ws = newWorkspace;
-      }
-  
-      private _onSizeChanged(wm: Shell.WM, winActor: Meta.WindowActor) {
-          const window = winActor.metaWindow;
-  
-          if (!window._queue_focus_ws) return;
-          const ws = window._queue_focus_ws;
-          delete window._queue_focus_ws;
-  
-          console.log(`_onSizeChanged ${ws}`);
-          // move the window
-          ws.activate_with_focus(window, global.get_current_time());
-          window.change_workspace(ws);
-          // todo check the following
-          // If the selected window is on a different workspace, we don't
-          // want it to disappear, then slide in with the workspace; instead,
-          // always activate it on the active workspace ...
-          activeWs.activate_with_focus(window, global.get_current_time());
-  
-          // ... then slide it over to the original workspace if necessary
-          Main.wm.actionMoveWindow(window, ws);
-  
-      }*/
   _onKeyboardMoveWin(display, direction, spanFlag) {
     const focus_window = display.get_focus_window();
     if (!focus_window || !focus_window.has_focus() || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs" || focus_window.is_fullscreen())
@@ -728,6 +655,7 @@ class TilingShellExtension extends Extension {
     this._dingBridge = null;
     this._dbus?.disable();
     this._dbus = null;
+    this._mutterSettings = null;
     this._fractionalScalingEnabled = false;
     OverriddenWindowMenu.destroy();
     OverriddenAltTab.destroy();

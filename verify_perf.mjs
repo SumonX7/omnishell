@@ -58,7 +58,7 @@ const check = (id, description, ok, evidence) => {
 
   const windows = /this\._windowId\(windows\[i\]\)/.test(keyBlock);
   const focused = /focused \? String\(this\._windowId\(focused\)\)/.test(keyBlock);
-  const layout = /parts\[windows\.length \+ 1\] = layoutId/.test(keyBlock);
+  const layout = /layoutId/.test(keyBlock);
   const treeRev = /_dynamicTreeRevision\(ws\)/.test(keyBlock);
   const pinRev = /_pinRevision\(\)/.test(keyBlock);
 

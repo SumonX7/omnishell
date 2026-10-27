@@ -6,13 +6,18 @@ import { isDesktopWindow } from "../../utils/desktopFilter.js";
 class RaiseTogetherManager {
   _signals;
   _raiseId;
+  _disabled;
+  _turnedOn;
   // map window id to 'raised' signal id
   constructor() {
     this._signals = new SignalHandling();
     this._raiseId = {};
+    this._disabled = false;
+    this._turnedOn = false;
   }
 
   enable() {
+    this._disabled = false;
     if (Settings.RAISE_TOGETHER) this._turnOn();
     this._signals.connect(Settings, Settings.KEY_RAISE_TOGETHER, () => {
       if (Settings.RAISE_TOGETHER) this._turnOn();
@@ -23,9 +28,14 @@ class RaiseTogetherManager {
   destroy() {
     this._signals.disconnect();
     this._raiseId = {};
+    this._turnedOn = false;
+    this._disabled = true;
   }
 
   _turnOn() {
+    this._disabled = false;
+    if (this._turnedOn) return;
+    this._turnedOn = true;
     getWindows().forEach((win) => this._connectRaisedSignal(win));
     this._signals.connect(
       global.display,
@@ -37,13 +47,13 @@ class RaiseTogetherManager {
   }
 
   _turnOff() {
-    this.destroy();
-    this.enable();
+    this._disabled = true;
   }
 
   _connectRaisedSignal(window) {
     if (!window || isDesktopWindow(window) || this._raiseId[window.get_id()]) return;
     const raisedId = this._signals.connect(window, "raised", () => {
+      if (this._disabled) return;
       if (!window.assignedTile) return;
       this._onTiledWindowRaised(window);
     });

@@ -415,6 +415,10 @@ class TilingManager {
         this._workspaceTilingLayout.clear();
         this._workspaceTilingLayout = newMap;
         const liveWorkspaces = new Set(newMap.keys());
+        [...this._dynamicSlotsCache.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicSlotsCache.delete(ws));
+        [...this._dynamicManagedCache.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicManagedCache.delete(ws));
+        [...this._dynamicTreeCache.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicTreeCache.delete(ws));
+        [...this._dynamicTreeRevisions.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicTreeRevisions.delete(ws));
         [...this._dynamicLayoutOffset.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicLayoutOffset.delete(ws));
         [...this._dynamicArrangements.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicArrangements.delete(ws));
         this._debug("deleted workspace");
@@ -1147,6 +1151,10 @@ class TilingManager {
     else this._selectedTilesPreview.open(position, ease);
   }
 
+  // Reusable 1×1 rectangle for monitor hit-testing during drag ticks,
+  // avoiding a GObject allocation every 15 ms.
+  _pointerRect = buildRectangle({ x: 0, y: 0, width: 1, height: 1 });
+
   /**
    * Checks if the pointer is inside the current monitor.
    *
@@ -1156,13 +1164,10 @@ class TilingManager {
    */
   _isPointerInsideThisMonitor(window, pointer = null) {
     const [x, y] = pointer ?? (TouchPointer.get().isTouchDeviceActive() ? TouchPointer.get().get_pointer(window) : PointerTracker.get().getPointer());
+    this._pointerRect.x = x;
+    this._pointerRect.y = y;
     const pointerMonitorIndex = global.display.get_monitor_index_for_rect(
-      buildRectangle({
-        x,
-        y,
-        width: 1,
-        height: 1
-      })
+      this._pointerRect
     );
     return this._monitor.index === pointerMonitorIndex;
   }
@@ -1277,16 +1282,18 @@ class TilingManager {
    * (cheap to compare) without needing a Map.
    */
   _dynamicSlotsKey(ws, windows, tree, focused, layoutId) {
-    const parts = new Array(windows.length + 6);
-    for (let i = 0; i < windows.length; i++)
-      parts[i] = String(this._windowId(windows[i]));
-    parts[windows.length] = focused ? String(this._windowId(focused)) : "-";
-    parts[windows.length + 1] = layoutId;
-    parts[windows.length + 2] = String(this._dynamicTreeRevision(ws));
-    parts[windows.length + 3] = this._pinRevision();
-    parts[windows.length + 4] = String(this._innerGapValue);
-    parts[windows.length + 5] = String(this._outerGapValue);
-    return parts.join(",");
+    let key = "";
+    for (let i = 0; i < windows.length; i++) {
+      if (i > 0) key += ",";
+      key += String(this._windowId(windows[i]));
+    }
+    key += "," + (focused ? String(this._windowId(focused)) : "-");
+    key += "," + layoutId;
+    key += "," + String(this._dynamicTreeRevision(ws));
+    key += "," + this._pinRevision();
+    key += "," + String(this._innerGapValue);
+    key += "," + String(this._outerGapValue);
+    return key;
   }
 
   /**

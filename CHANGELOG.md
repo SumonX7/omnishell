@@ -5,6 +5,43 @@ All notable changes to OmniShell are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-10-27
+
+### ⚡ Performance & CPU Optimization
+* **PointerTracker Event Filtering & Lazy Connect**:
+  * Event filtering on `global.stage`: only `MOTION`, `TOUCH_UPDATE`, `TOUCH_BEGIN`, and `TOUCH_END` events are processed. Irrelevant events (keyboard, button, scroll) are skipped cheaply, eliminating thousands of redundant handler calls per second on high-refresh displays.
+  * Reference-counted `acquire()` / `release()` lifecycle: stage pointer handlers connect only while an active drag or move is underway and disconnect completely when the desktop is idle, reducing idle CPU wakeups and conserving battery.
+* **Reusable Monitor Hit-Test Rectangle**:
+  * `_isPointerInsideThisMonitor()` in `tilingManager.js` reuses a single `Mtk.Rectangle` instead of instantiating a new GObject every 15 ms during drag.
+* **Cached GSettings Instances**:
+  * Replaced repeated instantiations of `new Gio.Settings({ schema: "org.gnome.mutter" })` in `extension.js` with a single cached `this._mutterSettings` instance created at `enable()` and cleared at `disable()`.
+* **Debounced Window Border Repaint**:
+  * The `restacked` signal in `windowBorder.js` is debounced with a 50 ms timer, preventing GPU and compositor queue stalls when multiple windows restack rapidly.
+* **State Flag Replacing Teardown/Rebuild Churn**:
+  * Replaced destructive `destroy()` + `enable()` churn in `windowBorderManager.js` and `raiseTogetherManager.js` with a lightweight `_disabled` flag, eliminating signal handler re-registration churn and preventing signal leaks on settings toggle.
+
+### 🏗️ Dynamic Tiling Enhancements
+* **Direct String Concatenation for Cache Keys**:
+  * Replaced `new Array(N+6)` + `.join(",")` in `_dynamicSlotsKey()` with direct string concatenation, eliminating array allocations and GC pauses in the dynamic tiling drag tick hot path.
+* **Complete Workspace Cache Purging**:
+  * On `workspace-removed`, purged all workspace-keyed caches (`_dynamicSlotsCache`, `_dynamicManagedCache`, `_dynamicTreeCache`, `_dynamicTreeRevisions`) alongside offsets and arrangements to prevent long-running memory growth.
+
+### 📱 Desktop Icons (DING) Subprocess Optimization
+* **Non-Blocking Asynchronous D-Bus Calls**:
+  * Replaced blocking synchronous `ListNamesSync()`, `ListActivatableNamesSync()`, and `IntrospectSync()` calls in `dbusUtils.js` with asynchronous variants (`ListNamesRemote()`, `ListActivatableNamesRemote()`, `IntrospectRemote()`), preventing GJS main loop freezes during D-Bus service discovery.
+* **Asynchronous File System I/O**:
+  * Migrated filesystem ID querying (`desktopFsId`) in `desktopManager.js` from synchronous `query_info()` to `query_info_async()`.
+* **Smart Rubber-Band Selection Redraws**:
+  * Restricted rubber-band motion redraws in `desktopManager.js` to only desktop grids intersecting the selection rectangle (or previously active grids), avoiding whole-screen multi-monitor redrawing on every pointer motion.
+* **Deduplicated Position Sort Comparators**:
+  * Streamlined `sortAllFilesFromGridsByPosition()` from 4 repetitive corner-inversion branches (~70 lines) into a unified parameterized comparator utilizing directional multipliers.
+
+### 🧹 Dead Code Removal & Cleanup
+* **`extension.js`**: Removed 72 lines of dead commented-out `_moveMaximizedToWorkspace` logic.
+* **`app/desktopManager.js`**: Removed unused `_getClipboardText()` method.
+* **`prefs.js`**: Removed dead `var _a;` compilation artifact and updated footer badge fallback to `v1.0.7`.
+* **`metadata.json`**: Bumped version to `107` and `version-name` to `1.0.7`.
+
 ## [1.0.6] - 2026-10-26
 
 ### Fixed

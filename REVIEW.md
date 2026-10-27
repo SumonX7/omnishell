@@ -3,7 +3,7 @@
 **Extension:** `omnishell@spark.dev` — *OmniShell: Tiling & Desktop Fusion*
 **Upstream credits:** [Tiling Shell](https://github.com/FerRaZo/gnome-shell-extension-tiling) by Domenico Ferraro · [DING](https://github.com/SergioCostas/Desktop-Icons-NG) by Sergio Costas
 **Target:** openSUSE Tumbleweed · GNOME Shell 50 · Wayland
-**Version reviewed:** 1.0.0 (version `100`) · **Current release:** 1.0.6 (version `106`)
+**Version reviewed:** 1.0.0 (version `100`) · **Current release:** 1.0.7 (version `107`)
 **Repository:** <https://github.com/SumonX7/omnishell>
 
 ---

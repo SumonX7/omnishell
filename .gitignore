@@ -1,7 +1,6 @@
 # Build artefacts
 build/
 *.zip
-!omnishell@spark.dev.zip
 src/gschemas.compiled
 src/schemas/gschemas.compiled
 src/resources.gresource

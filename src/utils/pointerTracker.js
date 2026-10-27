@@ -20,10 +20,19 @@
  * coordinate even when no event has arrived yet.
  */
 
-import { Meta } from "../gi/ext.js";
+import { Meta, Clutter } from "../gi/ext.js";
 import SignalHandling from "./signalHandling.js";
 
 const POINTER_UNSET = -1;
+
+// Event types worth tracking — everything else (keyboard, button, scroll)
+// is noise for a *pointer* tracker and can be skipped cheaply.
+const POINTER_EVENT_TYPES = new Set([
+  Clutter.EventType.MOTION,
+  Clutter.EventType.TOUCH_UPDATE,
+  Clutter.EventType.TOUCH_BEGIN,
+  Clutter.EventType.TOUCH_END,
+]);
 
 class PointerTracker {
   static _instance = null;
@@ -34,6 +43,11 @@ class PointerTracker {
   _signals = null;
   _hooked = false;
   _wayland = null;
+  // Reference count: how many callers need stage signals right now.
+  // Signals are connected on the first acquire and disconnected when
+  // the last holder releases, so normal typing / clicking does not run
+  // through the handler at all.
+  _refCount = 0;
 
   static get() {
     if (!PointerTracker._instance) {
@@ -43,8 +57,15 @@ class PointerTracker {
   }
 
   /**
-   * Starts listening for pointer motion on the stage. Safe to call more than
-   * once; only the first call installs the handlers.
+   * Marks the tracker as enabled. The stage signals are not connected
+   * immediately — call `acquire()` when pointer events are actually needed
+   * (e.g. a drag starts) and `release()` when they are not. This avoids
+   * running a handler on every stage event while idle, saving CPU and
+   * battery.
+   *
+   * For callers that do not use acquire/release, `enable()` seeds the
+   * initial position from the native pointer and sets `_hooked` so that
+   * `getPointer()` works.
    */
   enable() {
     if (this._hooked) return;
@@ -52,7 +73,34 @@ class PointerTracker {
 
     // Seed from the X11 path when it is available.
     this._pollNative();
+  }
 
+  disable() {
+    this._disconnectStage();
+    this._refCount = 0;
+    this._hooked = false;
+  }
+
+  /**
+   * Acquires a reference to the stage signals. The first acquire connects
+   * them; subsequent acquires are just reference-counted.
+   */
+  acquire() {
+    this._refCount++;
+    if (this._refCount === 1) this._connectStage();
+  }
+
+  /**
+   * Releases a reference. When the count reaches zero the stage signals
+   * are disconnected, so no handler runs while the desktop is idle.
+   */
+  release() {
+    if (this._refCount <= 0) return;
+    this._refCount--;
+    if (this._refCount === 0) this._disconnectStage();
+  }
+
+  _connectStage() {
     try {
       const stage = global.stage;
       if (!stage) return;
@@ -67,6 +115,8 @@ class PointerTracker {
         this._updateFromEvent(event);
       });
       this._signals.connect(stage, "captured-event", (_source, event) => {
+        const eventType = event.type();
+        if (!POINTER_EVENT_TYPES.has(eventType)) return;
         this._updateFromEvent(event);
       });
     } catch {
@@ -74,12 +124,11 @@ class PointerTracker {
     }
   }
 
-  disable() {
+  _disconnectStage() {
     if (this._signals) {
       this._signals.disconnect();
       this._signals = null;
     }
-    this._hooked = false;
   }
 
   _updateFromEvent(event) {

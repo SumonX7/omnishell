@@ -20,6 +20,7 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
   _enableScaling;
   _borderRadiusValue;
   _timeout;
+  _restackedTimeout;
   _delayedSmartBorderRadius;
   _scaledBorderWidth;
   constructor(win, enableScaling) {
@@ -49,6 +50,8 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
       this._signals.disconnect();
       if (this._timeout) clearTimeout(this._timeout);
       this._timeout = void 0;
+      if (this._restackedTimeout) clearTimeout(this._restackedTimeout);
+      this._restackedTimeout = void 0;
     });
   }
 
@@ -99,8 +102,12 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
       this.close();
     else this.open();
     this._signals.connect(global.display, "restacked", () => {
-      this.queue_repaint();
-      global.windowGroup.set_child_above_sibling(this, null);
+      if (this._restackedTimeout) clearTimeout(this._restackedTimeout);
+      this._restackedTimeout = setTimeout(() => {
+        this._restackedTimeout = void 0;
+        this.queue_repaint();
+        global.windowGroup.set_child_above_sibling(this, null);
+      }, 50);
     });
     this._signals.connect(this._window, "position-changed", () => {
       if (this._window.maximizedVertically || this._window.maximizedHorizontally || this._window.minimized || this._window.is_fullscreen()) {
@@ -313,6 +320,8 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
   }
 
   close() {
+    if (this._restackedTimeout) clearTimeout(this._restackedTimeout);
+    this._restackedTimeout = void 0;
     this.set_opacity(0);
     this.hide();
   }

@@ -10,17 +10,22 @@ class WindowBorderManager {
   _enableScaling;
   _interfaceSettings;
   _accentColorId;
+  _disabled;
+  _turnedOn;
   constructor(enableScaling) {
     this._signals = new SignalHandling();
     this._border = null;
     this._enableScaling = enableScaling;
     this._accentColorId = 0;
+    this._disabled = false;
+    this._turnedOn = false;
     this._interfaceSettings = new Gio.Settings({
       schema_id: "org.gnome.desktop.interface"
     });
   }
 
   enable() {
+    this._disabled = false;
     if (Settings.ENABLE_WINDOW_BORDER) this._turnOn();
     this._signals.connect(
       Settings,
@@ -33,6 +38,12 @@ class WindowBorderManager {
   }
 
   _turnOn() {
+    this._disabled = false;
+    if (this._turnedOn) {
+      this._onWindowFocused();
+      return;
+    }
+    this._turnedOn = true;
     this._onWindowFocused();
     this._signals.connect(
       global.display,
@@ -65,8 +76,9 @@ class WindowBorderManager {
   }
 
   _turnOff() {
-    this.destroy();
-    this.enable();
+    this._disabled = true;
+    this._border?.destroy();
+    this._border = null;
   }
 
   destroy() {
@@ -77,9 +89,12 @@ class WindowBorderManager {
     }
     this._border?.destroy();
     this._border = null;
+    this._turnedOn = false;
+    this._disabled = true;
   }
 
   _onWindowFocused() {
+    if (this._disabled) return;
     const metaWindow = global.display.focus_window;
     if (!metaWindow || metaWindow.get_wm_class() === null || metaWindow.get_wm_class() === "gjs" || isDesktopWindow(metaWindow)) {
       this._border?.destroy();

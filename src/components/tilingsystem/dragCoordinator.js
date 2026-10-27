@@ -90,6 +90,7 @@ class TilingDragCoordinator {
     this._dragWindow = window;
     this._grabOp = grabOp;
     this._forgetActiveManager();
+    PointerTracker.get().acquire();
 
     for (const manager of this._getManagers()) {
       try {
@@ -150,10 +151,13 @@ class TilingDragCoordinator {
 
   _endDrag() {
     const window = this._dragWindow;
+    if (!window) return;
+    PointerTracker.get().release();
+
     // Read the pointer before the drag state is cleared: the drop preview
     // must be resolved against the monitor the user released over, not the
     // pointer position a moment later.
-    const pointer = window && isWindowAlive(window) ? this._readPointer(window) : null;
+    const pointer = isWindowAlive(window) ? this._readPointer(window) : null;
     this._dragWindow = null;
     this._grabOp = 0;
     this._stopTimer();

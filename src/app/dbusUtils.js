@@ -149,7 +149,7 @@ class ProxyManager {
         if (this._beingLaunched)
             return;
 
-        this._interfaceXML = this._dbusManager.getInterface(this._serviceName, this._objectName, this._interfaceName, this._inSystemBus, false);
+        this._interfaceXML = await this._dbusManager.getInterfaceAsync(this._serviceName, this._objectName, this._interfaceName, this._inSystemBus, false);
         if (this._interfaceXML) {
             this._beingLaunched = true;
             try {
@@ -311,14 +311,6 @@ class DBusManager {
         this._signalTimerID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
             this._signalTimerID = 0;
             this._updateAllAvailabilities();
-            if (this._pendingLocalSignal)
-                this.emit('changed-availability-local');
-
-            if (this._pendingSystemSignal)
-                this.emit('changed-availability-system');
-
-            this._pendingLocalSignal = false;
-            this._pendingSystemSignal = false;
             return false;
         });
     }
@@ -331,33 +323,83 @@ class DBusManager {
     }
 
     _updateAllAvailabilities() {
-        this._availableInLocalBus = this._updateAvailability(this._dbusLocalProxy);
-        this._availableInSystemBus = this._updateAvailability(this._dbusSystemProxy);
+        this._pendingUpdates = 2;
+        this._updateAvailabilityAsync(this._dbusLocalProxy, (names) => {
+            this._availableInLocalBus = names;
+            this._pendingUpdates--;
+            if (this._pendingUpdates === 0)
+                this._onAvailabilitiesReady();
+        });
+        this._updateAvailabilityAsync(this._dbusSystemProxy, (names) => {
+            this._availableInSystemBus = names;
+            this._pendingUpdates--;
+            if (this._pendingUpdates === 0)
+                this._onAvailabilitiesReady();
+        });
     }
 
-    _updateAvailability(proxy) {
+    _onAvailabilitiesReady() {
+        // Called once both bus queries complete; emit deferred signals
+        // so ProxyManagers can pick up the updated availability.
+        if (this._pendingLocalSignal)
+            this.emit('changed-availability-local');
+
+        if (this._pendingSystemSignal)
+            this.emit('changed-availability-system');
+
+        this._pendingLocalSignal = false;
+        this._pendingSystemSignal = false;
+    }
+
+    _updateAvailabilityAsync(proxy, callback) {
         // We read both the well-known names actually running and those available as activatables,
         // and generate a single list with both. Thus a service will be "enabled" if it is running
         // or if it is activatable.
 
         const availableNames = [];
-        const names = proxy.ListNamesSync();
-        for (const n of names[0]) {
-            if (n.startsWith(':'))
-                continue;
+        let gotNames = false;
+        let gotActivatable = false;
 
-            if (!(n in availableNames))
-                availableNames.push(n);
-        }
-        const names2 = proxy.ListActivatableNamesSync();
-        for (const n of names2[0]) {
-            if (n.startsWith(':'))
-                continue;
+        const maybeFinish = () => {
+            if (gotNames && gotActivatable)
+                callback(availableNames);
+        };
 
-            if (!(n in availableNames))
-                availableNames.push(n);
-        }
-        return availableNames;
+        proxy.ListNamesRemote((result) => {
+            try {
+                if (result && result[0]) {
+                    for (const n of result[0]) {
+                        if (n.startsWith(':'))
+                            continue;
+
+                        if (!availableNames.includes(n))
+                            availableNames.push(n);
+                    }
+                }
+            } catch (e) {
+                console.error(e, 'Error in ListNamesRemote callback');
+            }
+            gotNames = true;
+            maybeFinish();
+        });
+
+        proxy.ListActivatableNamesRemote((result) => {
+            try {
+                if (result && result[0]) {
+                    for (const n of result[0]) {
+                        if (n.startsWith(':'))
+                            continue;
+
+                        if (!availableNames.includes(n))
+                            availableNames.push(n);
+                    }
+                }
+            } catch (e) {
+                console.error(e, 'Error in ListActivatableNamesRemote callback');
+            }
+            gotActivatable = true;
+            maybeFinish();
+        });
     }
 
     _getNextTag() {
@@ -420,6 +462,19 @@ class DBusManager {
         }
     }
 
+    getInterfaceAsync(serviceName, objectName, interfaceName, inSystemBus, forceIntrospection) {
+        if ((interfaceName in DBusInterfaces.DBusInterfaces) && !forceIntrospection) {
+            return Promise.resolve(DBusInterfaces.DBusInterfaces[interfaceName]);
+        } else {
+            return this.getIntrospectionDataAsync(serviceName, objectName, inSystemBus).then(data => {
+                if (data === null)
+                    return null;
+                else
+                    return this._parseXML(data, interfaceName);
+            });
+        }
+    }
+
     getIntrospectionData(serviceName, objectName, inSystemBus) {
         let data = null;
         try {
@@ -442,6 +497,42 @@ class DBusManager {
             return null; // if it doesn't exist, return null
 
         return data;
+    }
+
+    getIntrospectionDataAsync(serviceName, objectName, inSystemBus) {
+        return new Promise(resolve => {
+            try {
+                const iface = DBusInterfaces.DBusInterfaces['org.freedesktop.DBus.Introspectable'];
+                const Proxy = Gio.DBusProxy.makeProxyWrapper(iface);
+                new Proxy(
+                    inSystemBus ? Gio.DBus.system : Gio.DBus.session,
+                    serviceName,
+                    objectName,
+                    (proxy, error) => {
+                        if (error !== null) {
+                            console.error(error, 'Error creating introspection proxy over Dbus.');
+                            resolve(null);
+                            return;
+                        }
+                        proxy.IntrospectRemote((result) => {
+                            try {
+                                const data = result ? result[0] : null;
+                                if (data === null || !data.includes('interface'))
+                                    resolve(null);
+                                else
+                                    resolve(data);
+                            } catch (e) {
+                                console.error(e, 'Error in IntrospectRemote callback.');
+                                resolve(null);
+                            }
+                        });
+                    }
+                );
+            } catch (e) {
+                console.error(e, 'Error getting introspection data over Dbus.');
+                resolve(null);
+            }
+        });
     }
 
     doNotify(header, text) {
