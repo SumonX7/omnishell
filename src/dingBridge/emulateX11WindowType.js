@@ -180,10 +180,12 @@ class EmulateX11WindowType {
   _windowList;
   _waylandClient;
   _monitorData;
+  onWindowAdopted;
   constructor() {
     this._windowList = [];
     this._waylandClient = null;
     this._monitorData = [];
+    this.onWindowAdopted = null;
   }
 
   setMonitorData(data) {
@@ -237,7 +239,36 @@ class EmulateX11WindowType {
       (_, window) => {
         if (this._isDingWindow(window)) {
           this.addWindow(window);
+          return;
         }
+        // Under Wayland, client window properties like title and app ID
+        // may be committed a few milliseconds after window creation.
+        let titleId = 0;
+        let appId = 0;
+        let unmanagedId = 0;
+        const cleanup = () => {
+          if (titleId) {
+            try { window.disconnect(titleId); } catch {}
+            titleId = 0;
+          }
+          if (appId) {
+            try { window.disconnect(appId); } catch {}
+            appId = 0;
+          }
+          if (unmanagedId) {
+            try { window.disconnect(unmanagedId); } catch {}
+            unmanagedId = 0;
+          }
+        };
+        const check = () => {
+          if (this._isDingWindow(window)) {
+            cleanup();
+            this.addWindow(window);
+          }
+        };
+        titleId = window.connect("notify::title", check);
+        appId = window.connect("notify::gtk-application-id", check);
+        unmanagedId = window.connect("unmanaged", cleanup);
       },
       this
     );
@@ -278,6 +309,7 @@ class EmulateX11WindowType {
       this._windowList = this._windowList.filter((item) => item !== iWindow);
     });
     this.refreshWindowsPosition();
+    this.onWindowAdopted?.(window);
   }
 
   refreshWindowsPosition() {

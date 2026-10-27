@@ -6,6 +6,7 @@
  */
 import { Gio, GLib, Meta } from "../gi/ext.js";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import { DING_APP_ID, DING_SETTINGS_PATH } from "../app/dingBusNames.js";
 
 /** Grace period before the first watchdog kill, in milliseconds. */
 const LAUNCH_GRACE_PERIOD_MS = 8e3;
@@ -203,6 +204,19 @@ ${e.stack}`);
       console.log(`[OmniShell] query_window_belongs_to error: ${error.message}`);
     }
     return false;
+  }
+
+  showDesktopIconSettings() {
+    try {
+      const actionGroup = Gio.DBusActionGroup.get(
+        Gio.DBus.session,
+        DING_APP_ID,
+        DING_SETTINGS_PATH
+      );
+      actionGroup?.activate_action("changeDesktopIconSettings", null);
+    } catch (e) {
+      console.log(`[OmniShell] Error opening desktop icon settings: ${e.message}`);
+    }
   }
 }
 

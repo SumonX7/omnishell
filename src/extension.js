@@ -48,6 +48,7 @@ import { unmaximizeWindow, skipNextEffect } from "./utils/gnomesupport.js";
 import * as Config from "resource:///org/gnome/shell/misc/config.js";
 import { RaiseTogetherManager } from "./components/raiseTogether/raiseTogetherManager.js";
 import { DingBridge } from "./dingBridge/dingBridge.js";
+import { isDesktopWindow } from "./utils/desktopFilter.js";
 const debug = logger("extension");
 
 class TilingShellExtension extends Extension {
@@ -222,6 +223,11 @@ class TilingShellExtension extends Extension {
     if (Settings.OVERRIDE_ALT_TAB) OverriddenAltTab.enable();
     if (this._dingBridge) this._dingBridge.disable();
     this._dingBridge = new DingBridge(this.path);
+    this._dingBridge.onDesktopWindowAdopted = (window) => {
+      for (const manager of this._tilingManagers) {
+        manager.untrackWindow?.(window);
+      }
+    };
     this._dingBridge.enable();
     debug("extension is enabled");
   }
@@ -262,6 +268,7 @@ class TilingShellExtension extends Extension {
     // single new window ran the maximize/auto-tile logic once per monitor and
     // every dynamic manager tried to track it. Route it to its owner once.
     this._signals.connect(global.display, "window-created", (_display, window) => {
+      if (isDesktopWindow(window)) return;
       this._managerForWindow(window)?.onWindowCreated(window);
     });
     // Hand a dynamic window over as it crosses monitors. This replaces the
@@ -272,6 +279,7 @@ class TilingShellExtension extends Extension {
       "window-entered-monitor",
       (_display, monitorIndex, window) => {
         if (!Settings.ENABLE_DYNAMIC_TILING) return;
+        if (isDesktopWindow(window)) return;
         const target = this._tilingManagers[monitorIndex];
         if (!target) return;
         for (const manager of this._tilingManagers) {
@@ -283,9 +291,11 @@ class TilingShellExtension extends Extension {
     // Maximize state changes also belong to one manager, not to all of them.
     const shellWindowManager = TilingShellWindowManager.get();
     this._signals.connect(shellWindowManager, "unmaximized", (_wm, window) => {
+      if (isDesktopWindow(window)) return;
       this._managerForWindow(window)?.onWindowUnmaximized(window);
     });
     this._signals.connect(shellWindowManager, "maximized", (_wm, window) => {
+      if (isDesktopWindow(window)) return;
       this._managerForWindow(window)?.onWindowMaximized(window);
     });
     this._signals.connect(global.display, "workareas-changed", () => {
@@ -465,7 +475,7 @@ class TilingShellExtension extends Extension {
 
   _onKeyboardMoveWin(display, direction, spanFlag) {
     const focus_window = display.get_focus_window();
-    if (!focus_window || !focus_window.has_focus() || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs" || focus_window.is_fullscreen())
+    if (!focus_window || !focus_window.has_focus() || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs" || focus_window.is_fullscreen() || isDesktopWindow(focus_window))
       return;
     if ((focus_window.maximizedHorizontally || focus_window.maximizedVertically) && spanFlag)
       return;
@@ -523,7 +533,7 @@ class TilingShellExtension extends Extension {
 
   _onKeyboardFocusWinDirection(display, direction) {
     const focus_window = display.get_focus_window();
-    if (!focus_window || !focus_window.has_focus() || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs")
+    if (!focus_window || !focus_window.has_focus() || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs" || isDesktopWindow(focus_window))
       return;
     let bestWindow;
     let bestWindowDistance = -1;
@@ -574,7 +584,7 @@ class TilingShellExtension extends Extension {
 
   _onKeyboardFocusWin(display, direction) {
     const focus_window = display.get_focus_window();
-    if (!focus_window || !focus_window.has_focus() || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs")
+    if (!focus_window || !focus_window.has_focus() || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs" || isDesktopWindow(focus_window))
       return;
     const ws = focus_window.get_workspace() || global.workspaceManager?.get_active_workspace?.();
     const windowList = filterUnfocusableWindows(
@@ -613,7 +623,7 @@ class TilingShellExtension extends Extension {
 
   _onKeyboardUntileWindow(kb, display) {
     const focus_window = display.get_focus_window();
-    if (!focus_window || !focus_window.has_focus() || focus_window.windowType !== Meta.WindowType.NORMAL || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs")
+    if (!focus_window || !focus_window.has_focus() || focus_window.windowType !== Meta.WindowType.NORMAL || focus_window.get_wm_class() && focus_window.get_wm_class() === "gjs" || isDesktopWindow(focus_window))
       return;
     if (focus_window.maximizedHorizontally || focus_window.maximizedVertically)
       unmaximizeWindow(focus_window);

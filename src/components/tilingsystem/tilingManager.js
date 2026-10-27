@@ -1508,6 +1508,7 @@ class TilingManager {
   }
 
   _easeWindowRectFromTile(tile, window, skipAnimation = false) {
+    if (!window || isDesktopWindow(window)) return;
     const currentWs = window.get_workspace();
     const tilingLayout = this._workspaceTilingLayout.get(currentWs);
     if (!tilingLayout) return;
@@ -1805,6 +1806,24 @@ class TilingManager {
           this._invalidateManagedWindows();
           this._queueDynamicReflow();
         }
+      ),
+      // Under Wayland, a window's title or app id may arrive shortly after
+      // creation. If it turns out to be a desktop background window, evict it immediately.
+      window.connect(
+        "notify::title",
+        () => {
+          if (isDesktopWindow(window)) {
+            this.untrackWindow(window);
+          }
+        }
+      ),
+      window.connect(
+        "notify::gtk-application-id",
+        () => {
+          if (isDesktopWindow(window)) {
+            this.untrackWindow(window);
+          }
+        }
       )
       // Moving to another monitor is handled once by the extension's
       // "window-entered-monitor" dispatcher, which releases the window from
@@ -1813,6 +1832,25 @@ class TilingManager {
       // for every pointer event of every dragged window.
     ]);
     return true;
+  }
+
+  /**
+   * Public eviction method: clears any assigned tile, disconnects tracking
+   * signals, and removes the window from dynamic tiling.
+   */
+  untrackWindow(window) {
+    if (!window) return;
+    if (window.assignedTile) {
+      delete window.assignedTile;
+    }
+    const signals = this._dynamicWindowSignals.get(window);
+    if (signals) {
+      for (const id of signals) {
+        try { window.disconnect(id); } catch {}
+      }
+      this._dynamicWindowSignals.delete(window);
+    }
+    this._untrackDynamicWindow(window);
   }
 
   /**
@@ -2316,11 +2354,13 @@ class TilingManager {
       const windowActor = window.get_compositor_private();
       if (!windowActor) return;
       this._signals.connect(windowActor, "first-frame", () => {
+        this._signals.disconnect(windowActor);
+        if (isDesktopWindow(window)) return;
         if (!window.minimized && !window.maximizedHorizontally && !window.maximizedVertically && window.get_transient_for() === null && !window.is_attached_dialog())
           this._easeWindowRectFromTile(vacantTile, window, true);
-        this._signals.disconnect(windowActor);
       });
     } else {
+      if (isDesktopWindow(window)) return;
       this._easeWindowRectFromTile(vacantTile, window, true);
     }
   }

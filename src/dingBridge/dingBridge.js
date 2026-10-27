@@ -61,6 +61,7 @@ class DingBridge {
     this._workareasChangedId = 0;
     this._enabledSettingSignalId = 0;
     this._safeZoneSettingSignalId = 0;
+    this.onDesktopWindowAdopted = null;
     // The bridge is published under a Symbol key rather than a string
     // property: a string property on `global` is easy to collide with and
     // shows up during enumeration. This is not a security boundary, because
@@ -95,6 +96,9 @@ class DingBridge {
     if (this._isEnabled) return;
     if (!this._x11Manager) {
       this._x11Manager = new EmulateX11WindowType();
+      this._x11Manager.onWindowAdopted = (window) => {
+        this.onDesktopWindowAdopted?.(window);
+      };
     }
     if (!this.visibleArea) {
       this.visibleArea = new VisibleArea();
