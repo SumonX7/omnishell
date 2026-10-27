@@ -17,6 +17,8 @@ const DING_APP_IDS = new Set([
   DING_APP_ID_TEST,
   "com.rastersoft.ding",
   "com.rastersoft.dingtest",
+  "com.spark.omnishell.dingextension",
+  "omnishell.ding",
   "ding"
 ]);
 
@@ -32,12 +34,16 @@ function isDesktopWindow(window) {
     return true;
   }
   try {
-    const wmClass = window.get_wm_class();
-    if (wmClass && (DING_APP_IDS.has(wmClass) || wmClass.includes("ding"))) {
+    const wmClass = window.get_wm_class?.();
+    if (wmClass && (DING_APP_IDS.has(wmClass) || wmClass.includes("ding") || wmClass.includes("omnishell"))) {
       return true;
     }
-    const gtkId = window.get_gtk_application_id();
-    if (gtkId && (DING_APP_IDS.has(gtkId) || gtkId.includes("ding"))) {
+    const gtkId = window.get_gtk_application_id?.();
+    if (gtkId && (DING_APP_IDS.has(gtkId) || gtkId.includes("ding") || gtkId.includes("omnishell"))) {
+      return true;
+    }
+    const sandboxId = window.get_sandboxed_app_id?.();
+    if (sandboxId && (DING_APP_IDS.has(sandboxId) || sandboxId.includes("ding"))) {
       return true;
     }
   } catch {
@@ -50,8 +56,13 @@ function isDesktopWindow(window) {
   } catch {
   }
   try {
-    const title = window.get_title();
-    if (title === "DING" || (title && title.startsWith("DING "))) {
+    const title = window.get_title?.();
+    if (title && (
+      title === "DING" ||
+      title.startsWith("DING") ||
+      title.startsWith("Desktop Icons") ||
+      title.includes("@!")
+    )) {
       return true;
     }
   } catch {

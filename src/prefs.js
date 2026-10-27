@@ -1214,7 +1214,7 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
     });
     const versionStr = this.metadata?.["version-name"]
       ? `v${this.metadata["version-name"]}`
-      : (this.metadata?.version ? `v${this.metadata.version}` : "v1.0.7");
+      : (this.metadata?.version ? `v${this.metadata.version}` : "v1.0.8");
     const badgeLabel = new Gtk.Label({
       label: `${_("OmniShell Fusion")} (${versionStr}) \u2022 ${_("Built for GNOME Shell")}`
     });
@@ -1612,6 +1612,7 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
   }
 }
 
+let _a;
 const ShortcutSettingButton = (_a = class extends Gtk.Button {
   _editor;
   _label;

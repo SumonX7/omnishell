@@ -233,6 +233,7 @@ class DBusManager {
         this._availableInLocalBus = [];
         this._pendingLocalSignal = false;
         this._pendingSystemSignal = false;
+        this._initialLoad = true;
         this._signalTimerID = 0;
 
         let interfaceXML = this.getInterface(
@@ -341,10 +342,12 @@ class DBusManager {
     _onAvailabilitiesReady() {
         // Called once both bus queries complete; emit deferred signals
         // so ProxyManagers can pick up the updated availability.
-        if (this._pendingLocalSignal)
+        const isInitial = this._initialLoad;
+        this._initialLoad = false;
+        if (isInitial || this._pendingLocalSignal)
             this.emit('changed-availability-local');
 
-        if (this._pendingSystemSignal)
+        if (isInitial || this._pendingSystemSignal)
             this.emit('changed-availability-system');
 
         this._pendingLocalSignal = false;
@@ -365,7 +368,7 @@ class DBusManager {
                 callback(availableNames);
         };
 
-        proxy.ListNamesRemote((result) => {
+        proxy.ListNamesRemote((result, error) => {
             try {
                 if (result && result[0]) {
                     for (const n of result[0]) {
@@ -383,7 +386,7 @@ class DBusManager {
             maybeFinish();
         });
 
-        proxy.ListActivatableNamesRemote((result) => {
+        proxy.ListActivatableNamesRemote((result, error) => {
             try {
                 if (result && result[0]) {
                     for (const n of result[0]) {

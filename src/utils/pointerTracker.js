@@ -87,7 +87,10 @@ class PointerTracker {
    */
   acquire() {
     this._refCount++;
-    if (this._refCount === 1) this._connectStage();
+    if (this._refCount === 1) {
+      this._pollNative();
+      this._connectStage();
+    }
   }
 
   /**

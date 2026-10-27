@@ -1717,6 +1717,7 @@ class TilingManager {
    */
   _isExcludedFromTiling(window) {
     if (!window) return false;
+    if (isDesktopWindow(window)) return true;
     let excluded;
     try {
       excluded = Settings.TILING_EXCLUDED_APPS || [];
@@ -1769,6 +1770,7 @@ class TilingManager {
    */
   _isDynamicTrackable(window) {
     if (window !== null && window.windowType === Meta.WindowType.NORMAL && window.get_transient_for() === null && !window.is_attached_dialog()) {
+      if (isDesktopWindow(window)) return false;
       return !this._isExcludedFromTiling(window);
     }
     return false;
@@ -2302,7 +2304,7 @@ class TilingManager {
   }
 
   _autoTile(window, windowCreated) {
-    if (!window || window.windowType !== Meta.WindowType.NORMAL || window.get_transient_for() !== null || window.is_attached_dialog() || window.minimized || window.maximizedHorizontally || window.maximizedVertically)
+    if (!window || isDesktopWindow(window) || window.windowType !== Meta.WindowType.NORMAL || window.get_transient_for() !== null || window.is_attached_dialog() || window.minimized || window.maximizedHorizontally || window.maximizedVertically)
       return;
     if (window.get_monitor() !== this._monitor.index) return;
     if (this._isExcludedFromTiling(window)) return;

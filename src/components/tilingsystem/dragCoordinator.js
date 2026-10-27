@@ -152,7 +152,6 @@ class TilingDragCoordinator {
   _endDrag() {
     const window = this._dragWindow;
     if (!window) return;
-    PointerTracker.get().release();
 
     // Read the pointer before the drag state is cleared: the drop preview
     // must be resolved against the monitor the user released over, not the
@@ -175,6 +174,7 @@ class TilingDragCoordinator {
       }
     }
     TouchPointer.get().reset();
+    PointerTracker.get().release();
   }
 
   _stopTimer() {
