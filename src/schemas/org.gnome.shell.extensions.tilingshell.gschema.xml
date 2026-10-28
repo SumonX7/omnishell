@@ -304,7 +304,7 @@
             <summary>In dynamic tiling, use the next layout of the same size</summary>
         </key>
         <key type="as" name="cycle-dynamic-layout-backward">
-            <default><![CDATA[[]]]></default>
+            <default><![CDATA[['']]]></default>
             <summary>In dynamic tiling, use the previous layout of the same size</summary>
         </key>
         <key name="enable-desktop-icons" type="b">
