@@ -29,7 +29,7 @@ import {
   buildLayoutTree,
   leafCount
 } from "../layout/dynamic/layoutTree.js";
-import { assign, neighbourIndex, slotOrder, slotUnderPoint } from "../layout/dynamic/reflow.js";
+import { assign, neighbourIndex, slotOrder, slotUnderPoint, nearestSlotUnderPoint } from "../layout/dynamic/reflow.js";
 import { applyPins } from "../layout/dynamic/pins.js";
 import { pickLayoutIndex } from "../layout/dynamic/pickLayout.js";
 import {
@@ -154,6 +154,8 @@ class TilingManager {
   _dynamicTreeRevisions = /* @__PURE__ */ new Map();
   // Memoised `_dynamicTree()` result, per workspace.
   _dynamicTreeCache = /* @__PURE__ */ new Map();
+  // User-selected layout ID per workspace for dynamic tiling.
+  _selectedDynamicLayouts = /* @__PURE__ */ new Map();
   // Counter that is bumped whenever a pin is added, removed or resized.
   _pinRevisionCounter = 0;
   // Places windows without freezing their actors, and remembers what each
@@ -672,6 +674,7 @@ class TilingManager {
     this._dynamicSlotsCache.clear();
     this._dynamicTreeRevisions.clear();
     this._dynamicTreeCache.clear();
+    this._selectedDynamicLayouts.clear();
     this._pinRevisionCounter = 0;
     this._signals.disconnect();
     this._isGrabbingWindow = false;
@@ -1491,6 +1494,7 @@ class TilingManager {
       this._dynamicWindows[globalB],
       this._dynamicWindows[globalA]
     ];
+    this._invalidateManagedWindows();
     this._invalidateDynamicSlots();
   }
 
@@ -1542,7 +1546,10 @@ class TilingManager {
     } else {
       this._snapAssist.close(true);
     }
-    const under = slotUnderPoint(slots.rects, this._workArea, pointer);
+    let under = slotUnderPoint(slots.rects, this._workArea, pointer);
+    if (under < 0) {
+      under = nearestSlotUnderPoint(slots.rects, this._workArea, pointer);
+    }
     const to = under >= 0 ? under : from;
     if (to === this._dynamicPreviewSlot) return true;
     const rect = this._windowRectForTile(
@@ -2064,62 +2071,19 @@ class TilingManager {
    * workspace is known, and the reflow itself re-resolves everything.
    */
   _markDynamicNewcomer(window) {
-    // The newcomer may split an existing arrangement. Which arrangement
-    // depends on the window's workspace, which is often still null during
-    // "window-created" -- remember the window only.
     this._dynamicNewcomers.add(window);
     this._splitTarget = null;
 
-    // Try to resolve immediately (fast path: mutter already assigned a workspace).
-    const ws = window.get_workspace?.();
+    const ws = window.get_workspace?.() ?? global.workspaceManager.get_active_workspace();
     if (ws) {
       const focused = global.display.focus_window;
       const focusedIsManaged = focused ? this._dynamicManagedWindows(ws).includes(focused) : false;
       this._splitTarget = focusedIsManaged ? focused : null;
       this._invalidateDynamicSlots();
-      return;
     }
-
-    // Workspace not assigned yet — wait for the "workspace-changed" signal
-    // instead of polling with a 50 ms timer. The signal fires exactly once
-    // when mutter places the window on a workspace, so there is zero CPU
-    // overhead while waiting and no frame drops from repeated wakeups.
-    // A one-shot fallback idle covers the rare case where the workspace is
-    // assigned synchronously between "window-created" and the first idle tick
-    // without the signal firing (seen on some X11 configurations).
-    let resolved = false;
-    const resolve = () => {
-      if (resolved || this._destroyed) return;
-      if (!isWindowAlive(window)) { resolved = true; return; }
-      const windowWs = window.get_workspace?.();
-      if (!windowWs) return;
-      resolved = true;
-      const focused = global.display.focus_window;
-      const focusedIsManaged = focused ? this._dynamicManagedWindows(windowWs).includes(focused) : false;
-      this._splitTarget = focusedIsManaged ? focused : null;
-      this._invalidateDynamicSlots();
-      this._queueDynamicReflow();
-    };
-
-    // Connect workspace-changed as a one-shot resolver.
-    const wsChangedId = window.connect("workspace-changed", () => {
-      resolve();
-      try { window.disconnect(wsChangedId); } catch {}
-    });
-    // Also disconnect if the window is destroyed before workspace is assigned.
-    const unmanagedId = window.connect("unmanaged", () => {
-      resolved = true;
-      try { window.disconnect(wsChangedId); } catch {}
-      try { window.disconnect(unmanagedId); } catch {}
-    });
-
-    // Fallback idle in case workspace is already set by the time the signal
-    // fires (avoids a stuck newcomer on X11 / nested compositors).
-    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      if (!resolved) resolve();
-      return GLib.SOURCE_REMOVE;
-    });
-
+    // No signal connections needed here — _dynamicAdd's idle loop
+    // will retry until ws is available, then _dynamicSlots will
+    // resolve the correct split target at reflow time.
     this._invalidateDynamicSlots();
   }
 
@@ -2142,28 +2106,74 @@ class TilingManager {
     if (window.__omnishellBornTime === void 0)
       window.__omnishellBornTime = GLib.get_monotonic_time();
     this._markDynamicNewcomer(window);
-    const windowActor = window.get_compositor_private();
-    if (!windowActor) {
-      this._queueDynamicReflow();
-      return;
-    }
+
     let applied = false;
     const applyTiling = () => {
-      if (applied) return;
+      if (applied || this._destroyed) return;
+      if (!isWindowAlive(window)) return;
+      // Guard: if window has no workspace yet, defer to next idle.
+      // This handles the case where first-frame fires before mutter
+      // assigns the window to a workspace (common on Wayland).
+      if (!window.get_workspace?.()) {
+        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+          applyTiling();
+          return GLib.SOURCE_REMOVE;
+        });
+        return;
+      }
       applied = true;
+      // Re-resolve splitTarget if workspace was assigned after newcomer mark
+      const ws = window.get_workspace?.();
+      if (ws && !this._splitTarget) {
+        const focused = global.display.focus_window;
+        const focusedIsManaged = focused ? this._dynamicManagedWindows(ws).includes(focused) : false;
+        this._splitTarget = focusedIsManaged ? focused : null;
+      }
+      this._invalidateManagedWindows();
+      this._invalidateDynamicSlots();
       // Queue instead of applying directly: several windows opening at once
       // must produce one reflow, not one per window. The idle also lets a
       // window created while the layout is changing join the same pass.
       this._queueDynamicReflow();
     };
-    this._signals.connect(windowActor, "first-frame", () => {
-      this._signals.disconnect(windowActor);
-      applyTiling();
-    });
-    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      applyTiling();
-      return GLib.SOURCE_REMOVE;
-    });
+
+    const attachToActor = (actor) => {
+      if (!actor) return false;
+      this._signals.connect(actor, "first-frame", () => {
+        this._signals.disconnect(actor);
+        applyTiling();
+      });
+      return true;
+    };
+
+    const windowActor = window.get_compositor_private();
+    if (attachToActor(windowActor)) {
+      GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        applyTiling();
+        return GLib.SOURCE_REMOVE;
+      });
+    } else {
+      // Wayland: WindowActor is instantiated asynchronously after window-created.
+      // Retry on idle until actor is available, then attach first-frame and apply tiling.
+      let retries = 0;
+      GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        if (applied || this._destroyed) return GLib.SOURCE_REMOVE;
+        const actor = window.get_compositor_private();
+        if (actor) {
+          attachToActor(actor);
+          GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            applyTiling();
+            return GLib.SOURCE_REMOVE;
+          });
+          return GLib.SOURCE_REMOVE;
+        }
+        if (++retries > 40) {
+          applyTiling();
+          return GLib.SOURCE_REMOVE;
+        }
+        return GLib.SOURCE_CONTINUE;
+      });
+    }
   }
 
   /**
@@ -2190,9 +2200,14 @@ class TilingManager {
     if (cached && cached.windowCount === windowCount)
       return cached.tree;
 
+    const layouts = GlobalState.get().layouts;
+    const selectedId = this._selectedDynamicLayouts?.get(ws);
+    const selectedLayout = selectedId ? layouts.find((l) => l.id === selectedId) : null;
+
     // Build candidate trees from every saved layout.
-    const candidates = GlobalState.get().layouts
+    const candidates = layouts
       .map((layout) => ({
+        id: layout.id,
         tileCount: layout.tiles.length,
         tree: buildLayoutTree(
           layout.tiles.map((t) => ({ x: t.x, y: t.y, width: t.width, height: t.height }))
@@ -2206,6 +2221,14 @@ class TilingManager {
       const tree = buildLayoutTree([{ x: 0, y: 0, width: 1, height: 1 }]);
       this._dynamicTreeCache.set(ws, { windowCount, tree });
       return tree;
+    }
+
+    if (selectedLayout && selectedLayout.tiles.length === windowCount) {
+      const match = candidates.find((c) => c.id === selectedId);
+      if (match) {
+        this._dynamicTreeCache.set(ws, { windowCount, tree: match.tree });
+        return match.tree;
+      }
     }
 
     const index = pickLayoutIndex(
@@ -2229,6 +2252,11 @@ class TilingManager {
     if (windowCount === 0) return void 0;
     const layouts = GlobalState.get().layouts;
     if (!layouts || layouts.length === 0) return void 0;
+    const selectedId = this._selectedDynamicLayouts?.get(ws);
+    const selectedLayout = selectedId ? layouts.find((l) => l.id === selectedId) : null;
+    if (selectedLayout && selectedLayout.tiles.length === windowCount) {
+      return selectedId;
+    }
     const candidates = layouts
       .map((layout) => ({
         id: layout.id,
@@ -2276,14 +2304,7 @@ class TilingManager {
     const idx = group.findIndex((l) => l.id === currentId);
     const next = group[(idx + (direction > 0 ? 1 : group.length - 1)) % group.length];
     if (!next || next.id === currentId) return;
-    // Invalidate the tree cache so _dynamicTree() picks up the new layout
-    this._invalidateDynamicSlots([ws]);
-    // Temporarily reorder layouts so the target layout is picked first by
-    // pickLayoutIndex (which favours the leftmost exact match).
-    // We achieve this by emitting a GlobalState layouts-changed signal after
-    // swapping the layouts array — simpler approach: just invalidate and let
-    // the user's layout order naturally pick the next layout on next reflow.
-    this._queueDynamicReflow();
+    this.selectDynamicLayout(ws, next.id);
   }
 
   /**
@@ -2295,6 +2316,7 @@ class TilingManager {
     const layouts = GlobalState.get().layouts;
     const target = layouts.find((l) => l.id === layoutId);
     if (!target) return false;
+    this._selectedDynamicLayouts.set(ws, layoutId);
     this._invalidateDynamicSlots([ws]);
     this._queueDynamicReflow();
     return true;
@@ -2410,7 +2432,9 @@ class TilingManager {
       windows.forEach((window, slot) => {
         if (!isWindowAlive(window)) return;
         if (window.omnishellUserMaximized) return;
-        this._easeWindowRectFromTile(this._tileOf(rects[slot]), window);
+        const rect = rects[slot];
+        if (!rect) return;
+        this._easeWindowRectFromTile(this._tileOf(rect), window);
       });
     });
   }
@@ -2436,10 +2460,16 @@ class TilingManager {
       return true;
     }
     const [pointerX, pointerY] = pointer ?? PointerTracker.get().getPointer();
-    const to = slotUnderPoint(rects, this._workArea, {
+    let to = slotUnderPoint(rects, this._workArea, {
       x: pointerX,
       y: pointerY
     });
+    if (to < 0) {
+      to = nearestSlotUnderPoint(rects, this._workArea, {
+        x: pointerX,
+        y: pointerY
+      });
+    }
     if (to >= 0 && to !== from)
       this._dynamicSwap(ws, windows[from], windows[to]);
     // The reflow happens on the next idle rather than inside the input

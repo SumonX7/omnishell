@@ -124,11 +124,20 @@ function neighbourIndex(rects, from, direction) {
 
 function slotOrder(rects) {
   return rects.map((_, index) => index).sort((a, b) => {
-    const byArea = areaOf(rects[b]) - areaOf(rects[a]);
-    if (Math.abs(byArea) > 1e-9) return byArea;
-    if (Math.abs(rects[a].y - rects[b].y) > 1e-9)
-      return rects[a].y - rects[b].y;
-    return rects[a].x - rects[b].x;
+    const ra = rects[a];
+    const rb = rects[b];
+    const areaA = areaOf(ra);
+    const areaB = areaOf(rb);
+    const maxArea = Math.max(areaA, areaB);
+    // If tiles have nearly equal area (within 5% tolerance), keep natural
+    // geometric reading order (top-to-bottom, left-to-right) so Left stays Left
+    // and Right stays Right without crossover inversion.
+    if (maxArea > 0 && Math.abs(areaB - areaA) / maxArea > 0.05) {
+      return areaB - areaA;
+    }
+    if (Math.abs(ra.y - rb.y) > 1e-4)
+      return ra.y - rb.y;
+    return ra.x - rb.x;
   });
 }
 
@@ -151,11 +160,32 @@ function slotUnderPoint(rects, workArea, point) {
     return point.x >= x && point.x < right && point.y >= y && point.y < bottom;
   });
 }
+
+function nearestSlotUnderPoint(rects, workArea, point) {
+  if (!rects || rects.length === 0) return -1;
+  let best = -1;
+  let bestDistSq = Number.MAX_VALUE;
+  rects.forEach((r, idx) => {
+    const cx = workArea.x + (r.x + r.width / 2) * workArea.width;
+    const cy = workArea.y + (r.y + r.height / 2) * workArea.height;
+    const dx = point.x - cx;
+    const dy = point.y - cy;
+    const distSq = dx * dx + dy * dy;
+    if (distSq < bestDistSq) {
+      bestDistSq = distSq;
+      best = idx;
+    }
+  });
+  return best;
+}
+
 export {
   assign,
   leavesOf,
   neighbourIndex,
   reflow,
   slotOrder,
-  slotUnderPoint
+  slotUnderPoint,
+  nearestSlotUnderPoint
 };
+

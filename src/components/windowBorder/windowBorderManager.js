@@ -96,11 +96,19 @@ class WindowBorderManager {
   _onWindowFocused() {
     if (this._disabled) return;
     const metaWindow = global.display.focus_window;
-    if (!metaWindow || metaWindow.get_wm_class() === null || metaWindow.get_wm_class() === "gjs" || isDesktopWindow(metaWindow)) {
+    if (!metaWindow || isDesktopWindow(metaWindow)) {
       this._border?.destroy();
       this._border = null;
       return;
     }
+    const wmClass = metaWindow.get_wm_class?.();
+    const appId = metaWindow.get_gtk_application_id?.();
+    if (wmClass === "gjs" || appId === "gjs") {
+      this._border?.destroy();
+      this._border = null;
+      return;
+    }
+
     if (!this._border)
       this._border = new WindowBorder(metaWindow, this._enableScaling);
     else this._border.trackWindow(metaWindow);

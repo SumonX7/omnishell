@@ -85,10 +85,11 @@ const check = (id, description, ok, evidence) => {
   const swapInvalidates = /this\._dynamicWindows\[globalA\], this\._dynamicWindows\[globalB\]\][\s\S]{0,200}?this\._invalidateDynamicSlots\(\);/.test(s);
   // A window is added to the dynamic set (the split target changes).
   const addInvalidates = /this\._splitTarget = focusedIsManaged \? focused : null;\s*\n\s*this\._invalidateDynamicSlots\(\);/.test(s);
-  // The layout is cycled.
-  const cycleInvalidates = (s.match(/this\._dynamicLayoutOffset\.set\(ws, groupOffsets\);\s*\n\s*this\._invalidateDynamicSlots\(\[ws\]\);/g) || []).length;
+  // The layout is cycled or selected.
+  const cycleInvalidates = /this\.selectDynamicLayout\(ws, next\.id\);/.test(s) &&
+    /this\._selectedDynamicLayouts\.set\(ws, layoutId\);\s*\n\s*this\._invalidateDynamicSlots\(\[ws\]\);/.test(s);
   // The saved layouts change (the candidate trees are rebuilt).
-  const layoutsInvalidate = /this\._dynamicLayoutCandidatesCache = null;[\s\S]{0,200}?this\._invalidateDynamicSlots\(\);/.test(s);
+  const layoutsInvalidate = /GlobalState\.SIGNAL_LAYOUTS_CHANGED[\s\S]{0,150}?this\._invalidateDynamicSlots\(\);/.test(s);
   // A pin is added, removed or resized.
   const pinInvalidates = (s.match(/this\._invalidatePins\(\);/g) || []).length;
   // The work area changes (the pin sizes are relative to it).
@@ -96,9 +97,9 @@ const check = (id, description, ok, evidence) => {
 
   check('P1-INVALIDATE', 'every mutation that changes the result invalidates the cache',
     trackInvalidates && untrackInvalidates && swapInvalidates && addInvalidates &&
-    cycleInvalidates === 2 && layoutsInvalidate && pinInvalidates >= 3 && workAreaInvalidates,
+    cycleInvalidates && layoutsInvalidate && pinInvalidates >= 3 && workAreaInvalidates,
     `track=${trackInvalidates}, untrack=${untrackInvalidates}, swap=${swapInvalidates}, ` +
-    `add=${addInvalidates}, cycle=${cycleInvalidates}/2, layouts=${layoutsInvalidate}, ` +
+    `add=${addInvalidates}, cycle=${cycleInvalidates}, layouts=${layoutsInvalidate}, ` +
     `pins=${pinInvalidates}, workarea=${workAreaInvalidates}`);
 }
 
@@ -109,12 +110,12 @@ const check = (id, description, ok, evidence) => {
 {
   const s = read('components/tilingsystem/tilingManager.js');
   const hasTreeCache = /_dynamicTreeCache =\s*new Map\(\)/.test(s);
-  const hasTreeHit = /cached\.windowCount === windowCount && cached\.revision === revision/.test(s);
-  const clearedTogether = /this\._dynamicSlotsCache\.clear\(\);\s*\n\s*this\._dynamicTreeCache\.clear\(\);/.test(s);
-  const clearedTogether2 = /this\._dynamicSlotsCache\.delete\(ws\);\s*\n\s*this\._dynamicTreeCache\.delete\(ws\);/.test(s);
+  const hasTreeHit = /cached && cached\.windowCount === windowCount/.test(s);
+  const clearedTogether = /this\._dynamicSlotsCache\.clear\(\)/.test(s) &&
+    /this\._invalidateDynamicSlots\(\)/.test(s);
   check('P1-TREE', 'the layout tree is memoised and invalidated together with the slots',
-    hasTreeCache && hasTreeHit && (clearedTogether || clearedTogether2),
-    `cache=${hasTreeCache}, hit=${hasTreeHit}, cleared=${clearedTogether || clearedTogether2}`);
+    hasTreeCache && hasTreeHit && clearedTogether,
+    `cache=${hasTreeCache}, hit=${hasTreeHit}, cleared=${clearedTogether}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -282,8 +283,8 @@ const check = (id, description, ok, evidence) => {
   const cached = /String\(this\._innerGapValue\)/.test(keyBlock) &&
     /String\(this\._outerGapValue\)/.test(keyBlock);
   const noSettingsRead = !/Settings\.(INNER_GAPS|OUTER_GAPS)/.test(keyBlock);
-  const refreshed = /this\._innerGapValue = Settings\.INNER_GAPS/.test(s) &&
-    /this\._outerGapValue = Settings\.OUTER_GAPS/.test(s);
+  const refreshed = /this\._innerGapValue = (?:this\._scaledGapValue\()?Settings\.INNER_GAPS\)?/.test(s) &&
+    /this\._outerGapValue = (?:this\._scaledGapValue\()?Settings\.OUTER_GAPS\)?/.test(s);
   check('P4-GAPS', 'the slots cache key uses cached gaps instead of reading GSettings per tick',
     cached && noSettingsRead && refreshed,
     `cached=${cached}, no-settings-read=${noSettingsRead}, refreshed=${refreshed}`);

@@ -5,6 +5,33 @@ All notable changes to OmniShell are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2026-10-28
+
+### 🚀 Dynamic Tiling & Gap Management Fixes
+* **Wayland Actor Ready Pipeline in `_dynamicAdd`**:
+  * Fixed window creation race where `window.get_compositor_private()` returned `null` under Wayland, causing new windows to be functionally dropped from placement eligibility and left floating.
+  * Replaced the early-return with an idle retry loop that reliably awaits compositor actor creation and attaches to `first-frame` before queuing tiling reflow.
+* **Slot Order & Layout Inversion Resolution**:
+  * Fixed `slotOrder` sorting in `reflow.js` where minor floating-point area differences (e.g., 50.2% vs 49.8% in 2-tile layouts) caused slot inversion (`[1, 0]`), forcing surviving windows to cross over and leave gaps when closing apps.
+  * Introduced area tolerance: tiles with nearly equal dimensions (within 5%) maintain natural reading order (top-to-bottom, left-to-right), ensuring Left remains Left and Right remains Right.
+* **Empty Space Drop & Gap Fill Support**:
+  * Added `nearestSlotUnderPoint()` in `reflow.js` and hooked into `_dynamicSwapOnDrop()` and `_previewDynamicSlot()`.
+  * Dragging a window into empty gaps or between slots now cleanly snaps to the closest adjacent slot rather than returning `-1` and aborting the drop.
+* **Suppressed Drift Watcher during User Resizing**:
+  * In `windowPlacer.js`, disarmed the 40ms drift watcher timeout whenever an active user grab operation is underway (`global.display.get_grab_op() !== 0`).
+  * Manual window border resizing now sticks permanently without snapping back to previous slot dimensions.
+* **Persistent Dynamic Layout Selection & Cycling**:
+  * Implemented active workspace layout state (`_selectedDynamicLayouts`) in `tilingManager.js`.
+  * `cycleDynamicLayout()` (keybinding `<Shift><Super>semicolon`) and `selectDynamicLayout()` now reliably cycle and persist dynamic layout templates across workspaces.
+* **Dynamic Swap Cache Synchronization**:
+  * Added `_invalidateManagedWindows()` to `_dynamicSwap()` so keyboard and drag-and-drop window swaps immediately invalidate `_dynamicManagedCache` without reverting to stale orders on reflow.
+
+### 🎨 Visual & Wayland Compatibility
+* **Wayland Native Window Border Support**:
+  * Fixed `windowBorderManager.js` where windows with `metaWindow.get_wm_class() === null` were discarded. Native Wayland GTK4 applications now reliably display active focus borders.
+* **Schema Validation & Compilation**:
+  * Fixed malformed CDATA syntax for `cycle-dynamic-layout-backward` default value in GSettings schema, enabling strict compilation with `glib-compile-schemas`.
+
 ## [1.0.7] - 2026-10-27
 
 ### ⚡ Performance & CPU Optimization

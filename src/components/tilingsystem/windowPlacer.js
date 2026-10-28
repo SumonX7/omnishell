@@ -266,6 +266,15 @@ class WindowPlacer {
         stop();
         return;
       }
+      // If user is actively performing a grab operation (resizing or moving with pointer/keyboard),
+      // do not revert the window! Disarm drift watching and let the user's manual change stick.
+      try {
+        const grabOp = global.display?.get_grab_op?.() ?? 0;
+        if (grabOp !== 0) {
+          stop();
+          return;
+        }
+      } catch {}
       // Only a *size* drift matters here: the check below compares sizes,
       // and a position change cannot alter a window's size. Position
       // changes are reported at pointer rate during a drag, and reading
@@ -274,6 +283,7 @@ class WindowPlacer {
       if (sizeEquals(target.getFrameRect(), frame)) return;
       if (watch.quiet !== null) this._clock.cancel(watch.quiet);
       watch.quiet = this._clock.timeout(this._opts.quietMs, () => {
+
         watch.quiet = null;
         stop();
         if (!target.isAlive() || target.isUserMaximized?.()) return;
