@@ -135,6 +135,11 @@ class ResizingManager {
         windowsToResize
       )
     );
+    this._signals.connect(
+      window,
+      "unmanaged",
+      () => this._onWindowResizingEnd(window)
+    );
   }
 
   _oppositeSide(side) {

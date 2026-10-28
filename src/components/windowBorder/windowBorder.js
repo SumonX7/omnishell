@@ -168,7 +168,6 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
     this._timeout = void 0;
     this._timeout = setTimeout(() => {
       this._computeBorderRadius(winActor).then(() => this.updateStyle()).catch(() => {});
-      if (this._timeout) clearTimeout(this._timeout);
       this._timeout = void 0;
     }, SMART_BORDER_RADIUS_FIRST_FRAME_DELAY);
   }
@@ -258,6 +257,7 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
   }
 
   vfunc_repaint() {
+    if (!this._window || !this._window.get_compositor_private?.()) return;
     const cr = this.get_context();
     const themeNode = this.get_theme_node();
     const [width, height] = this.get_surface_size();

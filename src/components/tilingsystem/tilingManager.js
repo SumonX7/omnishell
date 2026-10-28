@@ -116,6 +116,7 @@ class TilingManager {
   // ones an existing arrangement grows by a cut instead of a rebuild.
   _dynamicNewcomers = /* @__PURE__ */ new Set();
   _dynamicReflowSourceId = null;
+  _destroyed = false;
   // The current inner/outer gap values, in pixels. They are part of the
   // slots cache key, which is rebuilt on every drag tick, so reading them
   // from GSettings there was a per-tick cost. They are refreshed by the
@@ -272,6 +273,7 @@ class TilingManager {
    *  - handle grabbed window's movement.
    */
   enable() {
+    this._destroyed = false;
     this._signals.connect(
       Settings,
       Settings.KEY_SETTING_SELECTED_LAYOUTS,
@@ -421,6 +423,9 @@ class TilingManager {
         [...this._dynamicTreeRevisions.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicTreeRevisions.delete(ws));
         [...this._dynamicLayoutOffset.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicLayoutOffset.delete(ws));
         [...this._dynamicArrangements.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicArrangements.delete(ws));
+        [...this._dynamicNewcomers].filter((w) => !isWindowAlive(w) || (w.get_workspace?.() && !liveWorkspaces.has(w.get_workspace()))).forEach((w) => this._dynamicNewcomers.delete(w));
+        [...this._pinnedWindows.keys()].filter((w) => !isWindowAlive(w) || (w.get_workspace?.() && !liveWorkspaces.has(w.get_workspace()))).forEach((w) => this._pinnedWindows.delete(w));
+        [...this._pinSettleBudget.keys()].filter((w) => !isWindowAlive(w) || (w.get_workspace?.() && !liveWorkspaces.has(w.get_workspace()))).forEach((w) => this._pinSettleBudget.delete(w));
         this._debug("deleted workspace");
       }
     );
@@ -604,6 +609,7 @@ class TilingManager {
    * Destroys the tiling manager and cleans up resources.
    */
   destroy() {
+    this._destroyed = true;
     this._placer.destroy();
     if (this._dynamicReflowSourceId !== null) {
       GLib.Source.remove(this._dynamicReflowSourceId);
@@ -2034,7 +2040,7 @@ class TilingManager {
     }
     let applied = false;
     const applyTiling = () => {
-      if (applied) return;
+      if (this._destroyed || applied) return;
       applied = true;
       // Queue instead of applying directly: several windows opening at once
       // must produce one reflow, not one per window. The idle also lets a
@@ -2046,6 +2052,7 @@ class TilingManager {
       applyTiling();
     });
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      if (this._destroyed) return GLib.SOURCE_REMOVE;
       applyTiling();
       return GLib.SOURCE_REMOVE;
     });
@@ -2249,12 +2256,13 @@ class TilingManager {
    * workspace together must produce one reflow, not one each.
    */
   _queueDynamicReflow() {
-    if (!Settings.ENABLE_DYNAMIC_TILING) return;
+    if (this._destroyed || !Settings.ENABLE_DYNAMIC_TILING) return;
     if (this._dynamicReflowSourceId !== null) return;
     this._dynamicReflowSourceId = GLib.idle_add(
       GLib.PRIORITY_DEFAULT_IDLE,
       () => {
         this._dynamicReflowSourceId = null;
+        if (this._destroyed) return GLib.SOURCE_REMOVE;
         this._applyDynamicTiling();
         return GLib.SOURCE_REMOVE;
       }
