@@ -166,6 +166,8 @@ class Settings {
   static SETTING_CYCLE_LAYOUTS_BACKWARD = "cycle-layouts-backward";
   static SETTING_CYCLE_DYNAMIC_LAYOUT = "cycle-dynamic-layout";
   static SETTING_CYCLE_DYNAMIC_LAYOUT_BACKWARD = "cycle-dynamic-layout-backward";
+  static SETTING_MOVE_WINDOW_TO_NEXT_WORKSPACE = "move-window-to-next-workspace";
+  static SETTING_MOVE_WINDOW_TO_PREV_WORKSPACE = "move-window-to-prev-workspace";
   static initialize(settings) {
     if (this._is_initialized) return;
     this._is_initialized = true;

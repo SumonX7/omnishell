@@ -307,6 +307,14 @@
             <default><![CDATA[['']]]></default>
             <summary>In dynamic tiling, use the previous layout of the same size</summary>
         </key>
+        <key type="as" name="move-window-to-next-workspace">
+            <default><![CDATA[['<Super><Shift>Up']]]></default>
+            <summary>Move focused window to the next workspace</summary>
+        </key>
+        <key type="as" name="move-window-to-prev-workspace">
+            <default><![CDATA[['<Super><Shift>Down']]]></default>
+            <summary>Move focused window to the previous workspace</summary>
+        </key>
         <key name="enable-desktop-icons" type="b">
             <default>true</default>
             <summary>Enable desktop icons</summary>

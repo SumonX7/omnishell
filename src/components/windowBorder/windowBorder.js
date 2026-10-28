@@ -167,8 +167,8 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
     if (this._timeout) clearTimeout(this._timeout);
     this._timeout = void 0;
     this._timeout = setTimeout(() => {
-      this._computeBorderRadius(winActor).then(() => this.updateStyle()).catch(() => {});
       this._timeout = void 0;
+      this._computeBorderRadius(winActor).then(() => this.updateStyle()).catch(() => {});
     }, SMART_BORDER_RADIUS_FIRST_FRAME_DELAY);
   }
 
@@ -257,7 +257,6 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
   }
 
   vfunc_repaint() {
-    if (!this._window || !this._window.get_compositor_private?.()) return;
     const cr = this.get_context();
     const themeNode = this.get_theme_node();
     const [width, height] = this.get_surface_size();
@@ -286,19 +285,21 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
     cr.closePath();
     cr.stroke();
     cr.save();
-    const winRect = this._window.get_frame_rect();
-    this._window.foreach_transient((_transient) => {
-      const transientRect = _transient.get_frame_rect();
-      const transientX = transientRect.x - winRect.x + borderWidth;
-      const transientY = transientRect.y - winRect.y + borderWidth;
-      const transientWidth = transientRect.width;
-      const transientHeight = transientRect.height;
-      cr.rectangle(transientX, transientY, transientWidth, transientHeight);
-      return true;
-    });
-    cr.clip();
-    cr.setOperator(0);
-    cr.paint();
+    if (this._window && this._window.get_compositor_private()) {
+      const winRect = this._window.get_frame_rect();
+      this._window.foreach_transient((_transient) => {
+        const transientRect = _transient.get_frame_rect();
+        const transientX = transientRect.x - winRect.x + borderWidth;
+        const transientY = transientRect.y - winRect.y + borderWidth;
+        const transientWidth = transientRect.width;
+        const transientHeight = transientRect.height;
+        cr.rectangle(transientX, transientY, transientWidth, transientHeight);
+        return true;
+      });
+      cr.clip();
+      cr.setOperator(0);
+      cr.paint();
+    }
     cr.restore();
     cr.$dispose();
   }

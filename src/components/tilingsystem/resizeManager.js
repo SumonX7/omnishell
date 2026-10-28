@@ -135,11 +135,11 @@ class ResizingManager {
         windowsToResize
       )
     );
-    this._signals.connect(
-      window,
-      "unmanaged",
-      () => this._onWindowResizingEnd(window)
-    );
+    // If the window is destroyed before the resize ends, the size-changed
+    // signal would otherwise stay connected into a dead object.
+    this._signals.connect(window, "unmanaged", () => {
+      this._signals.disconnect(window);
+    });
   }
 
   _oppositeSide(side) {

@@ -942,6 +942,20 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
         _("Cycle backward through available dynamic layouts of the same size"),
         false,
         false
+      ],
+      [
+        Settings.SETTING_MOVE_WINDOW_TO_NEXT_WORKSPACE,
+        _("Move window to next workspace"),
+        _("Move the focused window to the next workspace"),
+        false,
+        true
+      ],
+      [
+        Settings.SETTING_MOVE_WINDOW_TO_PREV_WORKSPACE,
+        _("Move window to previous workspace"),
+        _("Move the focused window to the previous workspace"),
+        false,
+        true
       ]
     ];
     const backwardSettingsKey = /* @__PURE__ */ new Map([
@@ -1378,45 +1392,162 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
    * The list is stored as a string array in the `tiling-excluded-apps` key;
    * each entry is either a WM class or a GTK application id, matched
    * case-insensitively and also by the short basename.
+   *
+   * The UI shows each entry as a small chip with a remove button, and an
+   * "Add" button that opens a simple text-entry dialog.
    */
   _buildExcludedAppsRow() {
-    const entry = new Gtk.Entry({
-      placeholder_text: "org.gnome.Nautilus, konsole",
-      valign: Gtk.Align.CENTER,
-      hexpand: true,
-    });
-    const current = (Settings.gioSetting.get_strv(Settings.KEY_TILING_EXCLUDED_APPS) || []).join(", ");
-    entry.set_text(current);
-    entry.set_tooltip_text(_(
-      "Comma-separated list of applications that should never be tiled. " +
-      "Use the WM class or the application id, e.g. org.gnome.Nautilus."
-    ));
-
-    const apply = () => {
-      const values = entry.get_text()
-        .split(",")
-        .map((v) => v.trim())
-        .filter((v) => v.length > 0);
-      Settings.gioSetting.set_strv(Settings.KEY_TILING_EXCLUDED_APPS, values);
-    };
-    // `Gtk.Entry` has no "apply" signal -- that belongs to `GtkFileChooser`
-    // and a few other widgets. Connecting to it threw
-    // "No signal 'apply' on object 'GtkEntry'", which aborted the whole
-    // preferences window and made it impossible to open.
-    //
-    // The "changed" signal fires on every keystroke, which is what the
-    // row wants anyway: the setting stays in sync while typing, so a
-    // crash does not lose the list.
-    entry.connect("changed", () => {
-      apply();
-    });
-
-    const adwRow = new Adw.ActionRow({
+    const expanderRow = new Adw.ExpanderRow({
       title: _("Applications excluded from tiling"),
       subtitle: _("Windows of these applications are never tiled or moved"),
     });
-    adwRow.add_suffix(entry);
-    return adwRow;
+
+    // Helper: re-read the setting and rebuild the chip list inside the row.
+    const rebuildChips = () => {
+      // Remove all existing child rows (chips).
+      let child = expanderRow.get_first_child();
+      // The ExpanderRow has internal children (header, list); we track our
+      // own chip rows via a tagged box instead.
+      chipsBox.get_first_child();
+      // Clear the chips box by removing all children.
+      let c = chipsBox.get_first_child();
+      while (c) {
+        const next = c.get_next_sibling();
+        chipsBox.remove(c);
+        c = next;
+      }
+
+      const apps = Settings.gioSetting.get_strv(Settings.KEY_TILING_EXCLUDED_APPS) || [];
+      apps.forEach((app) => {
+        const chipBox = new Gtk.Box({
+          orientation: Gtk.Orientation.HORIZONTAL,
+          spacing: 4,
+          margin_top: 2,
+          margin_bottom: 2,
+          margin_start: 6,
+          margin_end: 6,
+          valign: Gtk.Align.CENTER,
+        });
+        chipBox.add_css_class("card");
+        const label = new Gtk.Label({
+          label: app,
+          valign: Gtk.Align.CENTER,
+          hexpand: true,
+          xalign: 0,
+        });
+        const removeBtn = new Gtk.Button({
+          icon_name: "list-remove-symbolic",
+          valign: Gtk.Align.CENTER,
+          has_frame: false,
+          tooltip_text: _("Remove"),
+        });
+        removeBtn.add_css_class("circular");
+        removeBtn.connect("clicked", () => {
+          const current = Settings.gioSetting.get_strv(Settings.KEY_TILING_EXCLUDED_APPS) || [];
+          const updated = current.filter((v) => v !== app);
+          Settings.gioSetting.set_strv(Settings.KEY_TILING_EXCLUDED_APPS, updated);
+        });
+        chipBox.append(label);
+        chipBox.append(removeBtn);
+        chipsBox.append(chipBox);
+      });
+    };
+
+    // Container for the chips, placed inside an ActionRow inside the expander.
+    const chipsBox = new Gtk.Box({
+      orientation: Gtk.Orientation.VERTICAL,
+      spacing: 2,
+      margin_top: 4,
+      margin_bottom: 4,
+    });
+
+    const chipsRow = new Adw.ActionRow({
+      activatable: false,
+    });
+    chipsRow.set_child(chipsBox);
+    expanderRow.add_row(chipsRow);
+
+    // "Add" button row.
+    const addBtn = new Gtk.Button({
+      label: _("Add application…"),
+      valign: Gtk.Align.CENTER,
+      halign: Gtk.Align.CENTER,
+      margin_top: 4,
+      margin_bottom: 6,
+    });
+    addBtn.add_css_class("suggested-action");
+    addBtn.connect("clicked", () => {
+      const dialog = new Adw.Window({
+        modal: true,
+        hide_on_close: true,
+        transient_for: addBtn.get_root(),
+        width_request: 400,
+        height_request: 200,
+      });
+      const contentBox = new Gtk.Box({
+        orientation: Gtk.Orientation.VERTICAL,
+        spacing: 12,
+        margin_top: 24,
+        margin_bottom: 24,
+        margin_start: 24,
+        margin_end: 24,
+      });
+      const titleLabel = new Gtk.Label({
+        label: _("Add excluded application"),
+        css_classes: ["title-4"],
+        halign: Gtk.Align.START,
+      });
+      const entry = new Gtk.Entry({
+        placeholder_text: _("e.g. org.gnome.Nautilus or konsole"),
+        hexpand: true,
+        activates_default: true,
+      });
+      entry.set_tooltip_text(_(
+        "Enter the WM class or application id of the application to exclude from tiling."
+      ));
+      const btnBox = new Gtk.Box({
+        orientation: Gtk.Orientation.HORIZONTAL,
+        spacing: 8,
+        halign: Gtk.Align.END,
+      });
+      const cancelBtn = new Gtk.Button({ label: _("Cancel") });
+      cancelBtn.connect("clicked", () => dialog.close());
+      const confirmBtn = new Gtk.Button({
+        label: _("Add"),
+        css_classes: ["suggested-action"],
+      });
+      confirmBtn.connect("clicked", () => {
+        const val = entry.get_text().trim();
+        if (val.length > 0) {
+          const current = Settings.gioSetting.get_strv(Settings.KEY_TILING_EXCLUDED_APPS) || [];
+          if (!current.includes(val)) {
+            current.push(val);
+            Settings.gioSetting.set_strv(Settings.KEY_TILING_EXCLUDED_APPS, current);
+          }
+        }
+        dialog.close();
+      });
+      btnBox.append(cancelBtn);
+      btnBox.append(confirmBtn);
+      contentBox.append(titleLabel);
+      contentBox.append(entry);
+      contentBox.append(btnBox);
+      dialog.set_content(contentBox);
+      dialog.present();
+      entry.grab_focus();
+    });
+
+    const addRow = new Adw.ActionRow({ activatable: false });
+    addRow.set_child(addBtn);
+    expanderRow.add_row(addRow);
+
+    // Rebuild chips now and whenever the setting changes.
+    rebuildChips();
+    Settings.gioSetting.connect(`changed::${Settings.KEY_TILING_EXCLUDED_APPS}`, () => {
+      rebuildChips();
+    });
+
+    return expanderRow;
   }
 
   _buildDropDownRow(title, subtitle, initialValue, onChange, styleClass) {

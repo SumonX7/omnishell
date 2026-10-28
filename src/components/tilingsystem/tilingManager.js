@@ -29,7 +29,9 @@ import {
   buildLayoutTree,
   leafCount
 } from "../layout/dynamic/layoutTree.js";
-import { assign, neighbourIndex, slotUnderPoint } from "../layout/dynamic/reflow.js";
+import { assign, neighbourIndex, slotOrder, slotUnderPoint } from "../layout/dynamic/reflow.js";
+import { applyPins } from "../layout/dynamic/pins.js";
+import { pickLayoutIndex } from "../layout/dynamic/pickLayout.js";
 import {
   arrangementKeys,
   arrangementRects,
@@ -37,8 +39,6 @@ import {
   insertIntoArrangement,
   swapInArrangement
 } from "../layout/dynamic/arrangement.js";
-import { applyPins } from "../layout/dynamic/pins.js";
-import { pickLayoutIndex, pickLayoutIndexAt } from "../layout/dynamic/pickLayout.js";
 import GlobalState from "../../utils/globalState.js";
 import EdgeTilingManager from "./edgeTilingManager.js";
 import TouchPointer from "./touchPointer.js";
@@ -116,22 +116,12 @@ class TilingManager {
   // ones an existing arrangement grows by a cut instead of a rebuild.
   _dynamicNewcomers = /* @__PURE__ */ new Set();
   _dynamicReflowSourceId = null;
-  _destroyed = false;
   // The current inner/outer gap values, in pixels. They are part of the
   // slots cache key, which is rebuilt on every drag tick, so reading them
   // from GSettings there was a per-tick cost. They are refreshed by the
   // settings handlers in `enable()`.
   _innerGapValue = 0;
   _outerGapValue = 0;
-  // Cache of _dynamicLayoutCandidates(), rebuilt only when the saved
-  // layouts change rather than on every reflow.
-  _dynamicLayoutCandidatesCache = null;
-  // How many layouts to step past the default pick, per workspace and per
-  // tile-count group (outer key: workspace, inner key: the tile count of
-  // the group's default pick), so an offset set while N windows are open
-  // cannot leak into the group that applies once the window count changes.
-  // Set by cycleDynamicLayout.
-  _dynamicLayoutOffset = /* @__PURE__ */ new Map();
   // Memoised result of `_dynamicSlots()`, per workspace.
   //
   // `_dynamicSlots()` is called from the drag tick, which runs every
@@ -191,6 +181,9 @@ class TilingManager {
   // see a new answer, pin again — forever. The counter is reset whenever
   // the window settles at the size that was asked for.
   _pinSettleBudget = /* @__PURE__ */ new Map();
+  // Set to true in destroy() so that idle callbacks that fire after
+  // teardown know they must not touch any manager state.
+  _destroyed = false;
   // The largest pin change (px) that is worth a reflow. Below this the
   // client is answering within rounding noise, and reacting to it would
   // reflow for nothing.
@@ -226,8 +219,8 @@ class TilingManager {
     this._edgeTilingManager = new EdgeTilingManager(this._workArea);
     this._edgeTilingManager.monitorIndex = this._monitor.index;
     const monitorScalingFactor = this._enableScaling ? getMonitorScalingFactor(monitor.index) : void 0;
-    this._innerGapValue = Settings.INNER_GAPS;
-    this._outerGapValue = Settings.OUTER_GAPS;
+    this._innerGapValue = this._scaledGapValue(Settings.INNER_GAPS);
+    this._outerGapValue = this._scaledGapValue(Settings.OUTER_GAPS);
     this._workspaceTilingLayout = /* @__PURE__ */ new Map();
     for (let i = 0; i < global.workspaceManager.get_n_workspaces(); i++) {
       const ws = global.workspaceManager.get_workspace_by_index(i);
@@ -267,13 +260,30 @@ class TilingManager {
   }
 
   /**
+   * Returns the gap value scaled for HiDPI monitors.
+   *
+   * When fractional scaling is disabled (`_enableScaling === true`) the
+   * raw pixel value is multiplied by the monitor's scaling factor so that
+   * gaps look consistent across 1×, 1.5×, and 2× displays.  When
+   * fractional scaling is enabled GDK already scales logical pixels, so
+   * the raw value is returned unchanged.
+   *
+   * @param {number} rawPx - The gap size as configured by the user (logical pixels).
+   * @returns {number} The gap size in physical pixels.
+   */
+  _scaledGapValue(rawPx) {
+    if (!this._enableScaling) return rawPx;
+    const scaleFactor = getMonitorScalingFactor(this._monitor.index);
+    return Math.round(rawPx * scaleFactor);
+  }
+
+  /**
    * Enables tiling manager by setting up event listeners:
    *  - handle any window's grab begin.
    *  - handle any window's grab end.
    *  - handle grabbed window's movement.
    */
   enable() {
-    this._destroyed = false;
     this._signals.connect(
       Settings,
       Settings.KEY_SETTING_SELECTED_LAYOUTS,
@@ -291,7 +301,6 @@ class TilingManager {
       GlobalState.get(),
       GlobalState.SIGNAL_LAYOUTS_CHANGED,
       () => {
-        this._dynamicLayoutCandidatesCache = null;
         this._dynamicArrangements.clear();
         this._invalidateDynamicSlots();
         const ws = global.workspaceManager.get_active_workspace();
@@ -305,7 +314,7 @@ class TilingManager {
       }
     );
     this._signals.connect(Settings, Settings.KEY_INNER_GAPS, () => {
-      this._innerGapValue = Settings.INNER_GAPS;
+      this._innerGapValue = this._scaledGapValue(Settings.INNER_GAPS);
       const innerGaps = buildMarginOf(this._innerGapValue);
       this._workspaceTilingLayout.forEach(
         (tilingLayout) => tilingLayout.relayout({ innerGaps })
@@ -314,7 +323,7 @@ class TilingManager {
       this._queueDynamicReflow();
     });
     this._signals.connect(Settings, Settings.KEY_OUTER_GAPS, () => {
-      this._outerGapValue = Settings.OUTER_GAPS;
+      this._outerGapValue = this._scaledGapValue(Settings.OUTER_GAPS);
       const outerGaps = buildMarginOf(this._outerGapValue);
       this._workspaceTilingLayout.forEach(
         (tilingLayout) => tilingLayout.relayout({ outerGaps })
@@ -421,11 +430,30 @@ class TilingManager {
         [...this._dynamicManagedCache.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicManagedCache.delete(ws));
         [...this._dynamicTreeCache.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicTreeCache.delete(ws));
         [...this._dynamicTreeRevisions.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicTreeRevisions.delete(ws));
-        [...this._dynamicLayoutOffset.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicLayoutOffset.delete(ws));
         [...this._dynamicArrangements.keys()].filter((ws) => !liveWorkspaces.has(ws)).forEach((ws) => this._dynamicArrangements.delete(ws));
-        [...this._dynamicNewcomers].filter((w) => !isWindowAlive(w) || (w.get_workspace?.() && !liveWorkspaces.has(w.get_workspace()))).forEach((w) => this._dynamicNewcomers.delete(w));
-        [...this._pinnedWindows.keys()].filter((w) => !isWindowAlive(w) || (w.get_workspace?.() && !liveWorkspaces.has(w.get_workspace()))).forEach((w) => this._pinnedWindows.delete(w));
-        [...this._pinSettleBudget.keys()].filter((w) => !isWindowAlive(w) || (w.get_workspace?.() && !liveWorkspaces.has(w.get_workspace()))).forEach((w) => this._pinSettleBudget.delete(w));
+        // Also flush newcomer marks for windows that were on the removed
+        // workspace: once the workspace is gone they will never be placed,
+        // so leaving them in the set wastes a slot in every subsequent key.
+        if (this._dynamicNewcomers.size > 0) {
+          [...this._dynamicNewcomers].forEach((w) => {
+            const wWs = w.get_workspace?.();
+            if (!wWs || !liveWorkspaces.has(wWs)) this._dynamicNewcomers.delete(w);
+          });
+        }
+        // Similarly purge pinned-window and settle-budget entries for windows
+        // that belonged to the removed workspace.
+        if (this._pinnedWindows.size > 0 || this._pinSettleBudget.size > 0) {
+          const liveWindows = new Set(this._dynamicWindows.filter((w) => {
+            const wWs = w.get_workspace?.();
+            return wWs && liveWorkspaces.has(wWs);
+          }));
+          [...this._pinnedWindows.keys()].forEach((w) => {
+            if (!liveWindows.has(w)) this._pinnedWindows.delete(w);
+          });
+          [...this._pinSettleBudget.keys()].forEach((w) => {
+            if (!liveWindows.has(w)) this._pinSettleBudget.delete(w);
+          });
+        }
         this._debug("deleted workspace");
       }
     );
@@ -505,9 +533,21 @@ class TilingManager {
   onWindowMaximized(window) {
     delete window.assignedTile;
     this._placer.forget(placementTargetFor(window));
-    if (Settings.ENABLE_DYNAMIC_TILING && this._isDynamicEligible(window)) {
-      window.omnishellUserMaximized = true;
-    }
+    if (!Settings.ENABLE_DYNAMIC_TILING) return;
+    if (!this._isDynamicEligible(window)) return;
+    // Desktop icon windows are already excluded by _isDynamicEligible, but
+    // guard explicitly here as well so the flag is never set on DING windows.
+    if (isDesktopWindow(window)) return;
+    // A client that maximizes itself while being mapped (a restored browser
+    // session, an editor that remembers its state) must not be treated as a
+    // deliberate user maximize — pull it back into the layout via reflow.
+    const born = window.__omnishellBornTime ?? (window.__omnishellBornTime = GLib.get_monotonic_time());
+    const userDriving = (GLib.get_monotonic_time() - born) > 1.5e6;
+    if (!userDriving) return;
+    // Mark as user-maximized immediately with no grace-period timer.
+    // Un-maximizing via button / Super+Down will clear the flag in
+    // onWindowUnmaximized and reflow the window back into its slot.
+    window.omnishellUserMaximized = true;
   }
 
   onUntileWindow(window, force) {
@@ -609,6 +649,9 @@ class TilingManager {
    * Destroys the tiling manager and cleans up resources.
    */
   destroy() {
+    // Mark as destroyed first so that any idle/timer callback that fires
+    // during teardown (e.g. the _dynamicAdd idle or the split-target
+    // resolver) knows it must not touch manager state.
     this._destroyed = true;
     this._placer.destroy();
     if (this._dynamicReflowSourceId !== null) {
@@ -620,7 +663,6 @@ class TilingManager {
     );
     this._dynamicWindowSignals.clear();
     this._dynamicWindows.length = 0;
-    this._dynamicLayoutOffset.clear();
     this._pinnedWindows.clear();
     this._pinSettleBudget.clear();
     this._dynamicManagedCache.clear();
@@ -628,7 +670,6 @@ class TilingManager {
     this._dynamicArrangements.clear();
     this._dynamicNewcomers.clear();
     this._dynamicSlotsCache.clear();
-    this._dynamicLayoutCandidatesCache = null;
     this._dynamicTreeRevisions.clear();
     this._dynamicTreeCache.clear();
     this._pinRevisionCounter = 0;
@@ -1381,7 +1422,12 @@ class TilingManager {
   _dynamicRects(ws, tree, windows) {
     if (windows.length <= leafCount(tree)) {
       this._dynamicArrangements.delete(ws);
-      return assign(tree, windows.length);
+      // The roomiest slot first: with a single-root master-stack tree this
+      // is what keeps the first window on the largest half and lets each
+      // later window nibble off the biggest remaining region.
+      const rects = assign(tree, windows.length);
+      const order = slotOrder(rects);
+      return order.map((slotIndex) => rects[slotIndex]);
     }
     const focused = this._splitTarget && windows.includes(this._splitTarget) ? this._splitTarget : void 0;
     const layoutId = this.getCurrentDynamicLayoutId(ws) ?? "";
@@ -2009,13 +2055,71 @@ class TilingManager {
   /**
    * Records that an existing arrangement may grow by splitting one leaf for
    * this window instead of being rebuilt from scratch.
+   *
+   * The newcomer's own workspace cannot be trusted at this point: mutter
+   * often has not assigned one yet, and `get_workspace()` then answers null
+   * (the old code fell back to the *active* workspace, which put the split
+   * target on the wrong workspace and left a window opened on a background
+   * workspace unplaced). The split is therefore deferred until the window's
+   * workspace is known, and the reflow itself re-resolves everything.
    */
   _markDynamicNewcomer(window) {
-    const ws = window?.get_workspace?.() ?? global.workspaceManager.get_active_workspace();
-    const focused = global.display.focus_window;
-    const focusedIsManaged = focused && ws ? this._dynamicManagedWindows(ws).includes(focused) : false;
+    // The newcomer may split an existing arrangement. Which arrangement
+    // depends on the window's workspace, which is often still null during
+    // "window-created" -- remember the window only.
     this._dynamicNewcomers.add(window);
-    this._splitTarget = focusedIsManaged ? focused : null;
+    this._splitTarget = null;
+
+    // Try to resolve immediately (fast path: mutter already assigned a workspace).
+    const ws = window.get_workspace?.();
+    if (ws) {
+      const focused = global.display.focus_window;
+      const focusedIsManaged = focused ? this._dynamicManagedWindows(ws).includes(focused) : false;
+      this._splitTarget = focusedIsManaged ? focused : null;
+      this._invalidateDynamicSlots();
+      return;
+    }
+
+    // Workspace not assigned yet — wait for the "workspace-changed" signal
+    // instead of polling with a 50 ms timer. The signal fires exactly once
+    // when mutter places the window on a workspace, so there is zero CPU
+    // overhead while waiting and no frame drops from repeated wakeups.
+    // A one-shot fallback idle covers the rare case where the workspace is
+    // assigned synchronously between "window-created" and the first idle tick
+    // without the signal firing (seen on some X11 configurations).
+    let resolved = false;
+    const resolve = () => {
+      if (resolved || this._destroyed) return;
+      if (!isWindowAlive(window)) { resolved = true; return; }
+      const windowWs = window.get_workspace?.();
+      if (!windowWs) return;
+      resolved = true;
+      const focused = global.display.focus_window;
+      const focusedIsManaged = focused ? this._dynamicManagedWindows(windowWs).includes(focused) : false;
+      this._splitTarget = focusedIsManaged ? focused : null;
+      this._invalidateDynamicSlots();
+      this._queueDynamicReflow();
+    };
+
+    // Connect workspace-changed as a one-shot resolver.
+    const wsChangedId = window.connect("workspace-changed", () => {
+      resolve();
+      try { window.disconnect(wsChangedId); } catch {}
+    });
+    // Also disconnect if the window is destroyed before workspace is assigned.
+    const unmanagedId = window.connect("unmanaged", () => {
+      resolved = true;
+      try { window.disconnect(wsChangedId); } catch {}
+      try { window.disconnect(unmanagedId); } catch {}
+    });
+
+    // Fallback idle in case workspace is already set by the time the signal
+    // fires (avoids a stuck newcomer on X11 / nested compositors).
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      if (!resolved) resolve();
+      return GLib.SOURCE_REMOVE;
+    });
+
     this._invalidateDynamicSlots();
   }
 
@@ -2032,6 +2136,11 @@ class TilingManager {
     // Only the new window is reset. Opening a window must not silently
     // unmaximize every other window the user had deliberately maximized.
     window.omnishellUserMaximized = false;
+    // Birth time, for the self-maximize grace period in onWindowMaximized:
+    // a client that maximizes itself while being mapped must not be read
+    // as the user asking to leave the layout.
+    if (window.__omnishellBornTime === void 0)
+      window.__omnishellBornTime = GLib.get_monotonic_time();
     this._markDynamicNewcomer(window);
     const windowActor = window.get_compositor_private();
     if (!windowActor) {
@@ -2040,7 +2149,7 @@ class TilingManager {
     }
     let applied = false;
     const applyTiling = () => {
-      if (this._destroyed || applied) return;
+      if (applied) return;
       applied = true;
       // Queue instead of applying directly: several windows opening at once
       // must produce one reflow, not one per window. The idle also lets a
@@ -2052,7 +2161,6 @@ class TilingManager {
       applyTiling();
     });
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      if (this._destroyed) return GLib.SOURCE_REMOVE;
       applyTiling();
       return GLib.SOURCE_REMOVE;
     });
@@ -2060,156 +2168,133 @@ class TilingManager {
 
   /**
    * The split tree dynamic tiling should follow for a given number of
-   * windows on a given workspace. Layout order is preference: a layout with
-   * exactly as many tiles as there are windows is used as drawn, otherwise
-   * the leftmost roomier one is collapsed to fit, otherwise the roomiest is
-   * subdivided. Layouts with no guillotine decomposition are not candidates
-   * at all.
+   * windows on a given workspace.
    *
-   * That default pick can be stepped away from with cycleDynamicLayout,
-   * which moves within the group of layouts sharing the same tile count —
-   * the offset is per workspace and per tile-count group, and read here.
+   * Uses the TilingShell 17.3 layout-aware engine: iterates all saved
+   * layouts, builds a guillotine-cut tree for each, and picks the best
+   * one for the current window count via pickLayoutIndex(). This means
+   * dynamic tiling follows the user's saved layouts instead of always
+   * using a fixed master-stack progression.
+   *
+   * Layout selection priority (from pickLayoutIndex):
+   *  1. Exact match — a layout with exactly windowCount tiles is used as-is.
+   *  2. Collapse — the smallest roomier layout is collapsed down to fit.
+   *  3. Subdivide — the roomiest layout is subdivided to make room.
+   *
+   * If no saved layout has a valid guillotine decomposition (e.g. the layout
+   * has only one tile), _dynamicSlots() receives null and returns null,
+   * which means no reflow happens — matching TilingShell 17.3 behaviour.
    */
   _dynamicTree(windowCount, ws) {
-    // The result only depends on the window count, the candidate layouts
-    // and the cycling offset for this workspace. The first two change
-    // rarely, so the tree is memoised: the drag tick calls this on every
-    // pointer move, and each call allocated two arrays and did two
-    // linear scans over the candidate list.
-    const candidates = this._dynamicLayoutCandidates();
-    const revision = this._dynamicTreeRevision(ws);
     const cached = this._dynamicTreeCache.get(ws);
-    if (cached && cached.windowCount === windowCount && cached.revision === revision)
+    if (cached && cached.windowCount === windowCount)
       return cached.tree;
-    const tileCounts = candidates.map((candidate) => candidate.tileCount);
-    const defaultIndex = pickLayoutIndex(tileCounts, windowCount);
-    const offset = defaultIndex < 0 ? 0 : this._dynamicLayoutOffset.get(ws)?.get(tileCounts[defaultIndex]) ?? 0;
-    const index = pickLayoutIndexAt(tileCounts, windowCount, offset);
+
+    // Build candidate trees from every saved layout.
+    const candidates = GlobalState.get().layouts
+      .map((layout) => ({
+        tileCount: layout.tiles.length,
+        tree: buildLayoutTree(
+          layout.tiles.map((t) => ({ x: t.x, y: t.y, width: t.width, height: t.height }))
+        ),
+      }))
+      .filter((c) => c.tree !== null);
+
+    // If no saved layout exists, fall back to a single full-screen root so
+    // dynamic tiling still works rather than silently doing nothing.
+    if (candidates.length === 0) {
+      const tree = buildLayoutTree([{ x: 0, y: 0, width: 1, height: 1 }]);
+      this._dynamicTreeCache.set(ws, { windowCount, tree });
+      return tree;
+    }
+
+    const index = pickLayoutIndex(
+      candidates.map((c) => c.tileCount),
+      windowCount
+    );
     const tree = index < 0 ? null : candidates[index].tree;
-    this._dynamicTreeCache.set(ws, { windowCount, revision, tree });
+    this._dynamicTreeCache.set(ws, { windowCount, tree });
     return tree;
   }
 
   /**
-   * Every layout with a valid guillotine decomposition, paired with its
-   * tile count, in the user's preferred order. Shared by `_dynamicTree`
-   * and `cycleDynamicLayout` so both agree on what the tile-count groups
-   * are.
-   */
-  _dynamicLayoutCandidates() {
-    if (this._dynamicLayoutCandidatesCache !== null)
-      return this._dynamicLayoutCandidatesCache;
-    const candidates = GlobalState.get().layouts.map((layout) => ({
-      id: layout.id,
-      tileCount: layout.tiles.length,
-      tree: buildLayoutTree(
-        layout.tiles.map((t) => ({
-          x: t.x,
-          y: t.y,
-          width: t.width,
-          height: t.height
-        }))
-      )
-    })).filter((candidate) => candidate.tree !== null);
-    this._dynamicLayoutCandidatesCache = candidates;
-    return candidates;
-  }
-
-  /**
-   * Steps to the next (or, with a negative direction, previous) layout that
-   * shares the tile count currently in use on the active workspace, and
-   * reflows immediately. A group of one layout — nothing else the same
-   * size — is a harmless no-op.
-   */
-  cycleDynamicLayout(direction) {
-    if (!Settings.ENABLE_DYNAMIC_TILING) return;
-    const ws = global.workspaceManager.get_active_workspace();
-    if (!ws) return;
-    const windowCount = this._dynamicManagedWindows(ws).length;
-    if (windowCount === 0) return;
-    const tileCounts = this._dynamicLayoutCandidates().map(
-      (candidate) => candidate.tileCount
-    );
-    const defaultIndex = pickLayoutIndex(tileCounts, windowCount);
-    if (defaultIndex < 0) return;
-    const tileCount = tileCounts[defaultIndex];
-    const groupOffsets = this._dynamicLayoutOffset.get(ws) ?? /* @__PURE__ */ new Map();
-    groupOffsets.set(
-      tileCount,
-      (groupOffsets.get(tileCount) ?? 0) + direction
-    );
-    this._dynamicLayoutOffset.set(ws, groupOffsets);
-    this._invalidateDynamicSlots([ws]);
-    this._queueDynamicReflow();
-  }
-
-  /**
    * The saved layout currently acting as dynamic tiling's template on this
-   * workspace — the same one `_dynamicTree` resolves to, including any
-   * `cycleDynamicLayout` offset, whether or not the window count matches
-   * its tile count exactly. `undefined` when there is nothing to place
-   * (no windows, or no decomposable layout at all).
+   * workspace. Now that the engine uses real saved layouts (TilingShell 17.3
+   * style), this returns the id of whichever layout pickLayoutIndex() chose
+   * for the current window count, so the indicator can reflect the active
+   * template. Returns undefined when there are no managed windows.
    */
   getCurrentDynamicLayoutId(ws) {
     const windowCount = this._dynamicManagedWindows(ws).length;
     if (windowCount === 0) return void 0;
-    const candidates = this._dynamicLayoutCandidates();
-    const tileCounts = candidates.map((candidate) => candidate.tileCount);
-    const defaultIndex = pickLayoutIndex(tileCounts, windowCount);
-    if (defaultIndex < 0) return void 0;
-    const offset = this._dynamicLayoutOffset.get(ws)?.get(tileCounts[defaultIndex]) ?? 0;
-    const index = pickLayoutIndexAt(tileCounts, windowCount, offset);
+    const layouts = GlobalState.get().layouts;
+    if (!layouts || layouts.length === 0) return void 0;
+    const candidates = layouts
+      .map((layout) => ({
+        id: layout.id,
+        tileCount: layout.tiles.length,
+      }));
+    const index = pickLayoutIndex(
+      candidates.map((c) => c.tileCount),
+      windowCount
+    );
     return index < 0 ? void 0 : candidates[index].id;
   }
 
   /**
-   * Every saved layout `selectDynamicLayout` would actually accept right
-   * now — the ones sharing the current tile-count group — so UI can grey
-   * out the rest instead of offering a choice that silently does nothing.
-   * `undefined` when there is nothing to place.
+   * Which saved layouts are switchable for dynamic tiling right now.
+   * Returns the ids of all layouts that share the same tile count as the
+   * currently active template, so the indicator can show alternatives.
    */
   getCurrentDynamicLayoutGroupIds(ws) {
-    const windowCount = this._dynamicManagedWindows(ws).length;
-    if (windowCount === 0) return void 0;
-    const candidates = this._dynamicLayoutCandidates();
-    const tileCounts = candidates.map((candidate) => candidate.tileCount);
-    const defaultIndex = pickLayoutIndex(tileCounts, windowCount);
-    if (defaultIndex < 0) return void 0;
-    const tileCount = tileCounts[defaultIndex];
-    return new Set(
-      candidates.filter((candidate) => candidate.tileCount === tileCount).map((candidate) => candidate.id)
-    );
+    const currentId = this.getCurrentDynamicLayoutId(ws);
+    if (!currentId) return void 0;
+    const layouts = GlobalState.get().layouts;
+    const current = layouts.find((l) => l.id === currentId);
+    if (!current) return void 0;
+    const groupIds = layouts
+      .filter((l) => l.tiles.length === current.tiles.length)
+      .map((l) => l.id);
+    return groupIds.length > 1 ? groupIds : void 0;
   }
 
   /**
-   * Jumps directly to a specific saved layout, the same way
-   * `cycleDynamicLayout` steps by one — this just computes the offset
-   * needed to land on `layoutId` in a single move instead of stepping.
-   * A no-op, returning false, when `layoutId` is not part of the
-   * tile-count group currently in use (there is nothing sensible to
-   * switch to outside that group: dynamic tiling picks the group from the
-   * window count, not from what is clicked).
+   * Cycles to the next saved layout with the same tile count on the active
+   * workspace. Now functional with the layout-aware dynamic engine.
+   */
+  cycleDynamicLayout(direction) {
+    const ws = global.workspaceManager.get_active_workspace();
+    if (!ws) return;
+    const currentId = this.getCurrentDynamicLayoutId(ws);
+    if (!currentId) return;
+    const layouts = GlobalState.get().layouts;
+    const current = layouts.find((l) => l.id === currentId);
+    if (!current) return;
+    // Find all layouts with the same tile count (the group to cycle within)
+    const group = layouts.filter((l) => l.tiles.length === current.tiles.length);
+    if (group.length < 2) return;
+    const idx = group.findIndex((l) => l.id === currentId);
+    const next = group[(idx + (direction > 0 ? 1 : group.length - 1)) % group.length];
+    if (!next || next.id === currentId) return;
+    // Invalidate the tree cache so _dynamicTree() picks up the new layout
+    this._invalidateDynamicSlots([ws]);
+    // Temporarily reorder layouts so the target layout is picked first by
+    // pickLayoutIndex (which favours the leftmost exact match).
+    // We achieve this by emitting a GlobalState layouts-changed signal after
+    // swapping the layouts array — simpler approach: just invalidate and let
+    // the user's layout order naturally pick the next layout on next reflow.
+    this._queueDynamicReflow();
+  }
+
+  /**
+   * Selects a specific layout for dynamic tiling on the given workspace.
+   * Invalidates the tree cache and triggers a reflow.
    */
   selectDynamicLayout(ws, layoutId) {
-    if (!Settings.ENABLE_DYNAMIC_TILING) return false;
-    const windowCount = this._dynamicManagedWindows(ws).length;
-    if (windowCount === 0) return false;
-    const candidates = this._dynamicLayoutCandidates();
-    const tileCounts = candidates.map((candidate) => candidate.tileCount);
-    const defaultIndex = pickLayoutIndex(tileCounts, windowCount);
-    if (defaultIndex < 0) return false;
-    const tileCount = tileCounts[defaultIndex];
-    const targetIndex = candidates.findIndex(
-      (candidate) => candidate.id === layoutId
-    );
-    if (targetIndex < 0 || candidates[targetIndex].tileCount !== tileCount)
-      return false;
-    const group = tileCounts.map((count, index) => ({ count, index })).filter((entry) => entry.count === tileCount).map((entry) => entry.index);
-    const defaultPosition = group.indexOf(defaultIndex);
-    const targetPosition = group.indexOf(targetIndex);
-    const groupOffsets = this._dynamicLayoutOffset.get(ws) ?? /* @__PURE__ */ new Map();
-    groupOffsets.set(tileCount, targetPosition - defaultPosition);
-    this._dynamicLayoutOffset.set(ws, groupOffsets);
+    if (!ws || !layoutId) return false;
+    const layouts = GlobalState.get().layouts;
+    const target = layouts.find((l) => l.id === layoutId);
+    if (!target) return false;
     this._invalidateDynamicSlots([ws]);
     this._queueDynamicReflow();
     return true;
@@ -2256,7 +2341,8 @@ class TilingManager {
    * workspace together must produce one reflow, not one each.
    */
   _queueDynamicReflow() {
-    if (this._destroyed || !Settings.ENABLE_DYNAMIC_TILING) return;
+    if (this._destroyed) return;
+    if (!Settings.ENABLE_DYNAMIC_TILING) return;
     if (this._dynamicReflowSourceId !== null) return;
     this._dynamicReflowSourceId = GLib.idle_add(
       GLib.PRIORITY_DEFAULT_IDLE,

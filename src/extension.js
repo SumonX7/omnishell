@@ -428,6 +428,21 @@ class TilingShellExtension extends Extension {
           if (!switcher.show(currentAction === backwardAction, "", mask)) switcher.destroy();
         }
       );
+      this._signals.connect(
+        this._keybindings,
+        "move-window-to-workspace",
+        (kb, display, direction) => {
+          const win = display.get_focus_window();
+          if (!win || isDesktopWindow(win)) return;
+          const nws = global.workspaceManager.get_n_workspaces();
+          const cur = win.get_workspace().index();
+          const target = direction === 'next' ? cur + 1 : cur - 1;
+          if (target < 0 || target >= nws) return;
+          const ws = global.workspaceManager.get_workspace_by_index(target);
+          win.change_workspace(ws);
+          ws.activate_with_focus(win, global.get_current_time());
+        }
+      );
     }
     this._signals.connect(
       Settings,

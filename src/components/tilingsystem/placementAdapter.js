@@ -31,6 +31,12 @@ function adaptActor(actor, easeMode) {
 }
 
 function adaptWindow(window, easeMode) {
+  // Cache the actor adapter so `getActor()` does not allocate a new closure
+  // object on every call. The actor reference itself can change (e.g. after an
+  // unredirect), so we track the last seen actor and rebuild only when it does.
+  let cachedActor = null;
+  let cachedAdapter = null;
+
   return {
     isAlive: () => window.get_compositor_private() !== null,
     isMaximized: () => Boolean(
@@ -45,7 +51,13 @@ function adaptWindow(window, easeMode) {
     moveResizeFrame: (userOp, r) => window.move_resize_frame(userOp, r.x, r.y, r.width, r.height),
     getActor: () => {
       const actor = window.get_compositor_private();
-      return actor ? adaptActor(actor, easeMode) : null;
+      if (!actor) { cachedActor = null; cachedAdapter = null; return null; }
+      // Rebuild adapter only when the actor itself changes.
+      if (actor !== cachedActor) {
+        cachedActor = actor;
+        cachedAdapter = adaptActor(actor, easeMode);
+      }
+      return cachedAdapter;
     },
     onGeometryChanged: (cb) => {
       // "size-changed" and "position-changed" are reported separately so

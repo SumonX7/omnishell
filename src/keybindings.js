@@ -227,6 +227,24 @@ const _KeyBindings = class _KeyBindings extends GObject.Object {
         this.emit("cycle-dynamic-layout", display, -1);
       }
     );
+    Main.wm.addKeybinding(
+      Settings.SETTING_MOVE_WINDOW_TO_NEXT_WORKSPACE,
+      extensionSettings,
+      Meta.KeyBindingFlags.NONE,
+      Shell.ActionMode.NORMAL,
+      (display) => {
+        this.emit("move-window-to-workspace", display, "next");
+      }
+    );
+    Main.wm.addKeybinding(
+      Settings.SETTING_MOVE_WINDOW_TO_PREV_WORKSPACE,
+      extensionSettings,
+      Meta.KeyBindingFlags.NONE,
+      Shell.ActionMode.NORMAL,
+      (display) => {
+        this.emit("move-window-to-workspace", display, "prev");
+      }
+    );
   }
 
   _onCycleLayouts(display, event, binding, action) {
@@ -322,6 +340,8 @@ const _KeyBindings = class _KeyBindings extends GObject.Object {
     Main.wm.removeKeybinding(Settings.SETTING_CYCLE_LAYOUTS_BACKWARD);
     Main.wm.removeKeybinding(Settings.SETTING_CYCLE_DYNAMIC_LAYOUT);
     Main.wm.removeKeybinding(Settings.SETTING_CYCLE_DYNAMIC_LAYOUT_BACKWARD);
+    Main.wm.removeKeybinding(Settings.SETTING_MOVE_WINDOW_TO_NEXT_WORKSPACE);
+    Main.wm.removeKeybinding(Settings.SETTING_MOVE_WINDOW_TO_PREV_WORKSPACE);
   }
 
   _restoreNatives() {
@@ -394,6 +414,10 @@ registerGObjectClass(_KeyBindings, {
     "cycle-dynamic-layout": {
       param_types: [Meta.Display.$gtype, GObject.TYPE_INT]
       // Meta.Display, direction (1 or -1)
+    },
+    "move-window-to-workspace": {
+      param_types: [Meta.Display.$gtype, GObject.TYPE_STRING]
+      // Meta.Display, direction ("next" or "prev")
     }
   }
 });
