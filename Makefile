@@ -94,6 +94,8 @@ check:
 	@node test_dyn.mjs
 	@echo "==> Pin handling"
 	@node verify_pins.mjs
+	@echo "==> Gap fill & shrink verification"
+	@node verify_gap_fill.mjs
 	@echo "==> Schema compilation"
 	@glib-compile-schemas --strict "$(SRC)/schemas"
 	@echo "All checks passed."

@@ -7,6 +7,7 @@ import { isDesktopWindow } from "../../utils/desktopFilter.js";
 class WindowBorderManager {
   _signals;
   _border;
+  _borderSignals;
   _enableScaling;
   _interfaceSettings;
   _accentColorId;
@@ -14,6 +15,7 @@ class WindowBorderManager {
   _turnedOn;
   constructor(enableScaling) {
     this._signals = new SignalHandling();
+    this._borderSignals = null;
     this._border = null;
     this._enableScaling = enableScaling;
     this._accentColorId = 0;
@@ -26,6 +28,7 @@ class WindowBorderManager {
 
   enable() {
     this._disabled = false;
+    this._signals.disconnect();
     if (Settings.ENABLE_WINDOW_BORDER) this._turnOn();
     this._signals.connect(
       Settings,
@@ -45,17 +48,18 @@ class WindowBorderManager {
     }
     this._turnedOn = true;
     this._onWindowFocused();
-    this._signals.connect(
+    this._borderSignals = new SignalHandling();
+    this._borderSignals.connect(
       global.display,
       "notify::focus-window",
       this._onWindowFocused.bind(this)
     );
-    this._signals.connect(
+    this._borderSignals.connect(
       Settings,
       Settings.KEY_WINDOW_BORDER_COLOR,
       () => this._border?.updateStyle()
     );
-    this._signals.connect(
+    this._borderSignals.connect(
       Settings,
       Settings.KEY_WINDOW_USE_CUSTOM_BORDER_COLOR,
       () => this._border?.updateStyle()
@@ -68,7 +72,7 @@ class WindowBorderManager {
       "changed::accent-color",
       () => this._border?.updateStyle()
     );
-    this._signals.connect(
+    this._borderSignals.connect(
       Settings,
       Settings.KEY_WINDOW_BORDER_WIDTH,
       () => this._border?.updateStyle()
@@ -77,16 +81,22 @@ class WindowBorderManager {
 
   _turnOff() {
     this._disabled = true;
+    this._turnedOn = false;
+    if (this._borderSignals) {
+      this._borderSignals.disconnect();
+      this._borderSignals = null;
+    }
+    if (this._accentColorId) {
+      this._interfaceSettings.disconnect(this._accentColorId);
+      this._accentColorId = 0;
+    }
     this._border?.destroy();
     this._border = null;
   }
 
   destroy() {
+    this._turnOff();
     this._signals.disconnect();
-    if (this._accentColorId) {
-      this._interfaceSettings.disconnect(this._accentColorId);
-      this._accentColorId = 0;
-    }
     this._border?.destroy();
     this._border = null;
     this._turnedOn = false;

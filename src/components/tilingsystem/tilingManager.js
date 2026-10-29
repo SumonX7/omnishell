@@ -183,6 +183,7 @@ class TilingManager {
   // see a new answer, pin again — forever. The counter is reset whenever
   // the window settles at the size that was asked for.
   _pinSettleBudget = /* @__PURE__ */ new Map();
+  _dynamicIdleSources = /* @__PURE__ */ new Set();
   // Set to true in destroy() so that idle callbacks that fire after
   // teardown know they must not touch any manager state.
   _destroyed = false;
@@ -195,6 +196,20 @@ class TilingManager {
   static _MAX_PIN_SETTLE_REVISIONS = 3;
   _signals;
   _debug;
+
+  _addDynamicIdle(cb) {
+    if (this._destroyed) return null;
+    let sourceId = null;
+    sourceId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      if (sourceId !== null) {
+        this._dynamicIdleSources.delete(sourceId);
+      }
+      if (this._destroyed) return GLib.SOURCE_REMOVE;
+      return cb();
+    });
+    this._dynamicIdleSources.add(sourceId);
+    return sourceId;
+  }
   /**
    * Constructs a new TilingManager instance.
    * @param monitor The monitor to manage tiling for.
@@ -660,8 +675,16 @@ class TilingManager {
       GLib.Source.remove(this._dynamicReflowSourceId);
       this._dynamicReflowSourceId = null;
     }
+    if (this._dynamicIdleSources) {
+      for (const id of this._dynamicIdleSources) {
+        try { GLib.Source.remove(id); } catch {}
+      }
+      this._dynamicIdleSources.clear();
+    }
     this._dynamicWindowSignals.forEach(
-      (ids, window) => ids.forEach((id) => window.disconnect(id))
+      (ids, window) => ids.forEach((id) => {
+        try { window.disconnect(id); } catch {}
+      })
     );
     this._dynamicWindowSignals.clear();
     this._dynamicWindows.length = 0;
@@ -1932,9 +1955,10 @@ class TilingManager {
     // `_dynamicWindows.splice()`, which shifts the indices a concurrent
     // `_dynamicSwap` relies on and corrupts the slot assignment.
     const slot = this._dynamicWindows.indexOf(window);
+    if (window.assignedTile) {
+      delete window.assignedTile;
+    }
     if (slot < 0) {
-      // Already untracked. The bookkeeping below is idempotent, but the
-      // reflow must not be queued twice.
       this._dynamicWindowSignals.delete(window);
       this._dynamicNewcomers.delete(window);
       if (this._splitTarget === window) this._splitTarget = null;
@@ -1944,6 +1968,9 @@ class TilingManager {
       this._invalidatePins();
       this._invalidateManagedWindows();
       this._invalidateDynamicSlots();
+      if (!this._isGrabbingWindow && this._dynamicWindows.length > 0 && Settings.ENABLE_DYNAMIC_TILING) {
+        this._queueDynamicReflow();
+      }
       return;
     }
     this._dynamicWindowSignals.delete(window);
@@ -1976,7 +2003,9 @@ class TilingManager {
    * so the window is not left unmanaged until the next toggle.
    */
   _releaseDynamicWindow(window) {
-    this._dynamicWindowSignals.get(window)?.forEach((id) => window.disconnect(id));
+    this._dynamicWindowSignals.get(window)?.forEach((id) => {
+      try { window.disconnect(id); } catch {}
+    });
     this._untrackDynamicWindow(window);
   }
 
@@ -2074,7 +2103,7 @@ class TilingManager {
     this._dynamicNewcomers.add(window);
     this._splitTarget = null;
 
-    const ws = window.get_workspace?.() ?? global.workspaceManager.get_active_workspace();
+    const ws = window.get_workspace?.();
     if (ws) {
       const focused = global.display.focus_window;
       const focusedIsManaged = focused ? this._dynamicManagedWindows(ws).includes(focused) : false;
@@ -2115,7 +2144,7 @@ class TilingManager {
       // This handles the case where first-frame fires before mutter
       // assigns the window to a workspace (common on Wayland).
       if (!window.get_workspace?.()) {
-        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        this._addDynamicIdle(() => {
           applyTiling();
           return GLib.SOURCE_REMOVE;
         });
@@ -2124,7 +2153,7 @@ class TilingManager {
       applied = true;
       // Re-resolve splitTarget if workspace was assigned after newcomer mark
       const ws = window.get_workspace?.();
-      if (ws && !this._splitTarget) {
+      if (ws && (!this._splitTarget || this._splitTarget.get_workspace?.() !== ws)) {
         const focused = global.display.focus_window;
         const focusedIsManaged = focused ? this._dynamicManagedWindows(ws).includes(focused) : false;
         this._splitTarget = focusedIsManaged ? focused : null;
@@ -2148,7 +2177,7 @@ class TilingManager {
 
     const windowActor = window.get_compositor_private();
     if (attachToActor(windowActor)) {
-      GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      this._addDynamicIdle(() => {
         applyTiling();
         return GLib.SOURCE_REMOVE;
       });
@@ -2156,12 +2185,12 @@ class TilingManager {
       // Wayland: WindowActor is instantiated asynchronously after window-created.
       // Retry on idle until actor is available, then attach first-frame and apply tiling.
       let retries = 0;
-      GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      this._addDynamicIdle(() => {
         if (applied || this._destroyed) return GLib.SOURCE_REMOVE;
         const actor = window.get_compositor_private();
         if (actor) {
           attachToActor(actor);
-          GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+          this._addDynamicIdle(() => {
             applyTiling();
             return GLib.SOURCE_REMOVE;
           });
@@ -2431,10 +2460,20 @@ class TilingManager {
       const { windows, rects } = slots;
       windows.forEach((window, slot) => {
         if (!isWindowAlive(window)) return;
-        if (window.omnishellUserMaximized) return;
+        const isMaximized = Boolean(
+          window.maximizedHorizontally ||
+          window.maximizedVertically ||
+          window.maximized_horizontally ||
+          window.maximized_vertically
+        );
+        if (window.omnishellUserMaximized && isMaximized) return;
         const rect = rects[slot];
         if (!rect) return;
-        this._easeWindowRectFromTile(this._tileOf(rect), window);
+        try {
+          this._easeWindowRectFromTile(this._tileOf(rect), window);
+        } catch (err) {
+          this._debug(`Failed to ease window into slot ${slot}:`, err);
+        }
       });
     });
   }
