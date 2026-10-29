@@ -191,6 +191,12 @@ gsettings set org.gnome.shell.extensions.tilingshell enable-desktop-icons true 2
 gnome-extensions install --force "$ZIP_FILE" 2>/dev/null || true
 gnome-extensions enable "$EXTENSION_UUID" 2>/dev/null || true
 
+if gnome-extensions info "$EXTENSION_UUID" 2>/dev/null | grep -q 'ENABLED'; then
+  ok "OmniShell extension is active and ENABLED"
+else
+  info "Extension registered; will activate fully upon next login/session start"
+fi
+
 printf '\n\033[1;32m==========================================================\033[0m\n'
 printf '\033[1;32m OmniShell installed successfully!\033[0m\n'
 printf '\033[1;32m Location: %s\033[0m\n' "$EXTENSION_DIR"

@@ -1534,7 +1534,7 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
         halign: Gtk.Align.END,
       });
       const cancelBtn = new Gtk.Button({ label: _("Cancel") });
-      cancelBtn.connect("clicked", () => dialog.close());
+      cancelBtn.connect("clicked", () => dialog.destroy());
       const confirmBtn = new Gtk.Button({
         label: _("Add"),
         css_classes: ["suggested-action"],
@@ -1548,7 +1548,7 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
             Settings.gioSetting.set_strv(Settings.KEY_TILING_EXCLUDED_APPS, current);
           }
         }
-        dialog.close();
+        dialog.destroy();
       });
       btnBox.append(cancelBtn);
       btnBox.append(confirmBtn);
