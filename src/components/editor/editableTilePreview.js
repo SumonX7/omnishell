@@ -11,8 +11,10 @@ const _EditableTilePreview = class _EditableTilePreview extends TilePreview {
   _containerRect;
   _sliders;
   _signals;
+  _btnSignalIds;
   constructor(params) {
     super(params);
+    this._btnSignalIds = new Set();
     this.add_style_class_name("editable-tile-preview");
     this._tile = params.tile;
     this._containerRect = params.containerRect;
@@ -104,9 +106,21 @@ const _EditableTilePreview = class _EditableTilePreview extends TilePreview {
   }
 
   connect(signal, callback) {
-    if (signal === "clicked" || signal === "notify::hover" || signal === "motion-event")
-      return this._btn.connect(signal, callback);
+    if (signal === "clicked" || signal === "notify::hover" || signal === "motion-event") {
+      const id = this._btn.connect(signal, callback);
+      this._btnSignalIds.add(id);
+      return id;
+    }
     return super.connect(signal, callback);
+  }
+
+  disconnect(id) {
+    if (this._btnSignalIds.has(id)) {
+      this._btnSignalIds.delete(id);
+      try { this._btn.disconnect(id); } catch {}
+      return;
+    }
+    try { super.disconnect(id); } catch {}
   }
 
   _updateLabelText() {

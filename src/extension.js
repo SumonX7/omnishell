@@ -147,6 +147,13 @@ class TilingShellExtension extends Extension {
     }
 
     Settings.gioSetting.set_strv(migrationsKey, [...applied]);
+
+    try {
+      const raw = Settings.gioSetting?.get_string(Settings.KEY_SETTING_LAYOUTS_JSON);
+      if (!raw || raw === "[]") {
+        Settings.reset_layouts_json();
+      }
+    } catch {}
   }
 
   _onInstall() {
@@ -154,6 +161,12 @@ class TilingShellExtension extends Extension {
       Config.PACKAGE_VERSION.split(".")[0]
     );
     Settings.WINDOW_USE_CUSTOM_BORDER_COLOR = GNOME_VERSION_MAJOR < 47;
+    try {
+      const raw = Settings.gioSetting?.get_string(Settings.KEY_SETTING_LAYOUTS_JSON);
+      if (!raw || raw === "[]") {
+        Settings.reset_layouts_json();
+      }
+    } catch {}
   }
 
   enable() {

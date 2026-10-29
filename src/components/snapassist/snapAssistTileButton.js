@@ -3,8 +3,10 @@ import { St } from "../../gi/ext.js";
 import SnapAssistTile from "../../components/snapassist/snapAssistTile.js";
 const _SnapAssistTileButton = class _SnapAssistTileButton extends SnapAssistTile {
   _btn;
+  _btnSignalIds;
   constructor(params) {
     super(params);
+    this._btnSignalIds = new Set();
     this._btn = new St.Button({
       xExpand: true,
       yExpand: true,
@@ -31,16 +33,21 @@ const _SnapAssistTileButton = class _SnapAssistTileButton extends SnapAssistTile
   }
 
   connect(signal, callback) {
-    if (signal === "clicked") return this._btn.connect(signal, callback);
+    if (signal === "clicked") {
+      const id = this._btn.connect(signal, callback);
+      this._btnSignalIds.add(id);
+      return id;
+    }
     return super.connect(signal, callback);
   }
 
   disconnect(id) {
-    try {
-      this._btn.disconnect(id);
-    } catch {
-      super.disconnect(id);
+    if (this._btnSignalIds.has(id)) {
+      this._btnSignalIds.delete(id);
+      try { this._btn.disconnect(id); } catch {}
+      return;
     }
+    try { super.disconnect(id); } catch {}
   }
 };
 registerGObjectClass(_SnapAssistTileButton);

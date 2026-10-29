@@ -33,7 +33,7 @@ const _MasonryLayoutManager = class _MasonryLayoutManager extends Clutter.Layout
         rowWidths.push(0);
         rowCount++;
       }
-      const childWidth = Math.clamp(width, width, availableWidth);
+      const childWidth = Math.min(width, availableWidth);
       const childHeight = childWidth / aspectRatio;
       placements.push({
         child,
@@ -80,10 +80,13 @@ const _MasonryLayoutManager = class _MasonryLayoutManager extends Clutter.Layout
     const availableHeight = container.height - 2 * this._spacing;
     const allocationCache = container._allocationCache || /* @__PURE__ */ new Map();
     container._allocationCache = allocationCache;
-    if (!children.find((ch) => !allocationCache.has(ch))) {
+    const cachedSize = container._allocationCacheSize;
+    const sizeMatches = cachedSize && cachedSize.width === container.width && cachedSize.height === container.height;
+    if (sizeMatches && !children.find((ch) => !allocationCache.has(ch))) {
       children.forEach((ch) => ch.allocate(allocationCache.get(ch)));
       return;
     }
+    container._allocationCacheSize = { width: container.width, height: container.height };
     allocationCache.clear();
     this._rowCount = Math.ceil(Math.sqrt(children.length)) + 1;
     let rowHeight = 0;
@@ -106,7 +109,7 @@ const _MasonryLayoutManager = class _MasonryLayoutManager extends Clutter.Layout
         rowWidths.push(0);
         this._rowCount++;
       }
-      const childWidth = Math.clamp(width, width, availableWidth);
+      const childWidth = Math.min(width, availableWidth);
       const childHeight = childWidth / aspectRatio;
       placements.push({
         child,
@@ -136,7 +139,7 @@ const _MasonryLayoutManager = class _MasonryLayoutManager extends Clutter.Layout
     });
     for (const placement of placements)
       placement.row = rowsOrdering.get(placement.row) ?? placement.row;
-    const rowYPosition = Array(this._rowCount).fill({ y: 0, height: 0 });
+    const rowYPosition = Array.from({ length: this._rowCount }, () => ({ y: 0, height: 0 }));
     for (const placement of placements) {
       rowYPosition[placement.row] = {
         y: 0,

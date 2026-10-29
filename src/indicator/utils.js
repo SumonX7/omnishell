@@ -1,7 +1,7 @@
 import { St, Clutter, Gio } from "../gi/ext.js";
 const createButton = (iconName, text, path) => {
   const btn = createIconButton(iconName, path, 8);
-  btn.set_style("padding-left: 5px !important;");
+  btn.set_style("padding-left: 5px !important; padding-right: 5px !important;");
   btn.child.add_child(
     new St.Label({
       marginBottom: 4,

@@ -1,7 +1,7 @@
 import { registerGObjectClass } from "../../utils/gjs.js";
 import { Clutter } from "../../gi/ext.js";
 import Layout from "../layout/Layout.js";
-import { buildRectangle, isPointInsideRect } from "../../utils/ui.js";
+import { buildRectangle, isPointInsideRect, isWindowAlive } from "../../utils/ui.js";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import GlobalState from "../../utils/globalState.js";
 import SuggestedWindowPreview from "./suggestedWindowPreview.js";
@@ -218,7 +218,13 @@ const _TilingLayoutWithSuggestions = class _TilingLayoutWithSuggestions extends 
     if (!this._showing) return;
     this._showing = false;
     this._signals.disconnect();
-    if (this._lastTiledWindow) Main.activateWindow(this._lastTiledWindow);
+    if (this._lastTiledWindow) {
+      try {
+        if (isWindowAlive(this._lastTiledWindow)) {
+          Main.activateWindow(this._lastTiledWindow);
+        }
+      } catch {}
+    }
     this._previews.push(...this._oldPreviews);
     this._oldPreviews = [];
     this._previews.forEach((prev) => prev.removeAllWindows());

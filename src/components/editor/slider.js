@@ -218,7 +218,9 @@ const _Slider = class _Slider extends St.Button {
       this._dragging = false;
       this._lastEventCoord = null;
     }
-    global.display.set_cursor(this.preferredCursor);
+    try {
+      global.display?.set_cursor?.(this.preferredCursor);
+    } catch {}
     return Clutter.EVENT_STOP;
   }
 
@@ -253,7 +255,11 @@ const _Slider = class _Slider extends St.Button {
     this._previousTiles = [];
     this._nextTiles = [];
     this._lastEventCoord = null;
-    this._endDragging();
+    if (this._dragging) {
+      try {
+        this._endDragging();
+      } catch {}
+    }
   }
 };
 registerGObjectClass(_Slider, {
