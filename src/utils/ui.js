@@ -128,7 +128,11 @@ function filterUnfocusableWindows(windows) {
 }
 
 function isWindowAlive(window) {
-  return window !== null && window.get_compositor_private() !== null;
+  try {
+    return Boolean(window && window.get_compositor_private?.());
+  } catch {
+    return false;
+  }
 }
 
 /**

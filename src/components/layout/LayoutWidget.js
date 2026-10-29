@@ -100,7 +100,7 @@ const _LayoutWidget = class _LayoutWidget extends St.Widget {
       ));
       this._innerGaps = params.innerGaps.copy();
     }
-    if (params?.outerGaps && this._outerGaps !== params.outerGaps) {
+    if (params?.outerGaps) {
       trigger_relayout || (trigger_relayout = !this._areGapsEqual(
         this._outerGaps,
         params.outerGaps

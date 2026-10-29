@@ -439,7 +439,7 @@ class DefaultMenu {
     }
     const selected_layouts = Settings.get_selected_layouts();
     const ws_selected_layouts = wsIndex < selected_layouts.length ? selected_layouts[wsIndex] : [];
-    return monitorIndex < ws_selected_layouts.length ? ws_selected_layouts[monitorIndex] : GlobalState.get().layouts[0].id;
+    return monitorIndex < ws_selected_layouts.length ? ws_selected_layouts[monitorIndex] : (GlobalState.get().layouts[0]?.id ?? "");
   }
 
   /**

@@ -379,7 +379,7 @@ registerGObjectClass(_SnapAssist, {
   GTypeName: "SnapAssist",
   Signals: {
     "snap-assist": {
-      param_types: [Tile.$gtype, String.$gtype]
+      param_types: [Tile.$gtype, GObject.TYPE_STRING]
       // tile, layout_id
     }
   }

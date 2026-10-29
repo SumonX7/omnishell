@@ -19,16 +19,29 @@ class SettingsExport {
   }
 
   importFromString(content) {
+    const backup = this.exportToString();
     this.restoreToDefault();
-    const proc = Gio.Subprocess.new(
-      ["dconf", "load", dconfPath],
-      Gio.SubprocessFlags.STDIN_PIPE
-    );
-    proc.communicate_utf8(content, null);
-    if (!proc.get_successful()) {
-      this.restoreToDefault();
+    try {
+      const proc = Gio.Subprocess.new(
+        ["dconf", "load", dconfPath],
+        Gio.SubprocessFlags.STDIN_PIPE
+      );
+      proc.communicate_utf8(content, null);
+      if (!proc.get_successful()) {
+        throw new Error("Failed to load dconf dump");
+      }
+    } catch (err) {
+      try {
+        const restoreProc = Gio.Subprocess.new(
+          ["dconf", "load", dconfPath],
+          Gio.SubprocessFlags.STDIN_PIPE
+        );
+        restoreProc.communicate_utf8(backup, null);
+      } catch {
+        this.restoreToDefault();
+      }
       throw new Error(
-        "Failed to import dconf dump file. Restoring to default..."
+        "Failed to import dconf dump file. Previous settings preserved: " + err.message
       );
     }
   }

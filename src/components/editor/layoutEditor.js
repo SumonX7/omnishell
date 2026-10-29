@@ -8,7 +8,8 @@ import {
   buildTileGaps,
   enableScalingFactorSupport,
   getMonitorScalingFactor,
-  getWindowsOfMonitor
+  getWindowsOfMonitor,
+  isWindowAlive
 } from "../../utils/ui.js";
 import TileUtils from "../layout/TileUtils.js";
 import Slider from "./slider.js";
@@ -284,7 +285,7 @@ const _LayoutEditor = class _LayoutEditor extends St.Widget {
   _onDestroy() {
     this._minimizedWindows.forEach((win) => {
       try {
-        if (win && !win.unmanaged) win.unminimize();
+        if (isWindowAlive(win)) win.unminimize();
       } catch {}
     });
     this.destroy_all_children();

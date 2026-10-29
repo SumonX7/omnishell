@@ -163,6 +163,9 @@ const _Indicator = class _Indicator extends PanelMenu.Button {
       path: this._path,
       legend: showLegend
     });
+    this._editorDialog.connect("destroy", () => {
+      this._editorDialog = null;
+    });
     this._editorDialog.open();
   }
 

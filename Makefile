@@ -96,6 +96,8 @@ check:
 	@node verify_pins.mjs
 	@echo "==> Gap fill & shrink verification"
 	@node verify_gap_fill.mjs
+	@echo "==> Round-2 audit verification (N1 to N11)"
+	@node verify_audit_round2.mjs
 	@echo "==> Schema compilation"
 	@glib-compile-schemas --strict "$(SRC)/schemas"
 	@echo "All checks passed."

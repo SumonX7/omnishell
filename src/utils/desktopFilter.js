@@ -61,7 +61,7 @@ function isDesktopWindow(window) {
       title === "DING" ||
       title.startsWith("DING") ||
       title.startsWith("Desktop Icons") ||
-      title.includes("@!")
+      title.startsWith("@!")
     )) {
       return true;
     }

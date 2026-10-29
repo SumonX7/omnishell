@@ -194,7 +194,7 @@ const _GlobalState = class _GlobalState extends GObject.Object {
     this.layouts = this._layouts;
     this._selected_layouts.forEach((monitors_selected) => {
       if (layoutToDelete.id === monitors_selected[Main.layoutManager.primaryIndex]) {
-        monitors_selected[Main.layoutManager.primaryIndex] = this._layouts[0].id;
+        monitors_selected[Main.layoutManager.primaryIndex] = this._layouts[0]?.id ?? "";
         this._save_selected_layouts();
       }
     });

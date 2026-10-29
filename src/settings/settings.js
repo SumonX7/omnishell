@@ -587,18 +587,13 @@ class Settings {
       const layouts = JSON.parse(
         this._settings?.get_string(this.KEY_SETTING_LAYOUTS_JSON) || "[]"
       );
-      if (layouts.length === 0)
-        throw new Error("At least one layout is required");
-      return layouts.filter((layout) => layout.tiles.length > 0);
-    } catch (_unused) {
-      this.reset_layouts_json();
-      try {
-        return JSON.parse(
-          this._settings?.get_string(this.KEY_SETTING_LAYOUTS_JSON) || "[]"
-        );
-      } catch {
-        return [];
+      if (Array.isArray(layouts) && layouts.length > 0) {
+        const valid = layouts.filter((layout) => layout?.tiles?.length > 0);
+        if (valid.length > 0) return valid;
       }
+      return this.getDefaultLayouts();
+    } catch (_unused) {
+      return this.getDefaultLayouts();
     }
   }
 
@@ -623,8 +618,8 @@ class Settings {
     return result;
   }
 
-  static reset_layouts_json() {
-    this.save_layouts_json([
+  static getDefaultLayouts() {
+    return [
       new Layout(
         [
           new Tile({
@@ -734,7 +729,11 @@ class Settings {
         ],
         "Layout 4"
       )
-    ]);
+    ];
+  }
+
+  static reset_layouts_json() {
+    this.save_layouts_json(this.getDefaultLayouts());
   }
 
   static save_layouts_json(layouts) {

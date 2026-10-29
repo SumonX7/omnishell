@@ -34,6 +34,14 @@ const _SnapAssistTileButton = class _SnapAssistTileButton extends SnapAssistTile
     if (signal === "clicked") return this._btn.connect(signal, callback);
     return super.connect(signal, callback);
   }
+
+  disconnect(id) {
+    try {
+      this._btn.disconnect(id);
+    } catch {
+      super.disconnect(id);
+    }
+  }
 };
 registerGObjectClass(_SnapAssistTileButton);
 let SnapAssistTileButton = _SnapAssistTileButton;
