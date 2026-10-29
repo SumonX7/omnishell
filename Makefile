@@ -100,6 +100,8 @@ check:
 	@node verify_audit_round2.mjs
 	@echo "==> Round-3 audit verification (R1 to R11)"
 	@node verify_audit_round3.mjs
+	@echo "==> Round-4 audit verification (T1 to T10)"
+	@node verify_audit_round4.mjs
 	@echo "==> Schema compilation"
 	@glib-compile-schemas --strict "$(SRC)/schemas"
 	@echo "All checks passed."

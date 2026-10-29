@@ -185,12 +185,6 @@ const _TilingLayout = class _TilingLayout extends LayoutWidget {
             this.set_child_above_sibling(innerPreview, preview);
             newPreviewsArray.push(innerPreview);
           }
-          preview.open(
-            rectangles[maxIndex].union(
-              preview.rect.intersect(rect)[1]
-            ),
-            false
-          );
           preview.open(rectangles[maxIndex], true);
           newPreviewsArray.push(preview);
         } else {
@@ -243,7 +237,12 @@ const _TilingLayout = class _TilingLayout extends LayoutWidget {
     // The tolerance is expressed in pixels rather than as a percentage so
     // that the behaviour does not depend on the size of the rectangle.
     const sliverTolerance = 4;
-    if (intersection.area() >= sourceArea - sliverTolerance) return [true, []];
+    if (
+      sourceRect.width - intersection.width <= sliverTolerance &&
+      sourceRect.height - intersection.height <= sliverTolerance
+    ) {
+      return [true, []];
+    }
     const results = [];
     const heightA = intersection.y - sourceRect.y;
     if (heightA > 0) {

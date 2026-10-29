@@ -77,6 +77,11 @@ class WindowBorderManager {
       Settings.KEY_WINDOW_BORDER_WIDTH,
       () => this._border?.updateStyle()
     );
+    this._borderSignals.connect(
+      Settings,
+      Settings.KEY_ENABLE_SMART_WINDOW_BORDER_RADIUS,
+      () => this._border?.updateStyle()
+    );
   }
 
   _turnOff() {

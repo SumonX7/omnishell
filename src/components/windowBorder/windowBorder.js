@@ -244,7 +244,7 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
     enableScalingFactorSupport(this, monitorScalingFactor);
     const [alreadyScaled, scalingFactor] = getScalingFactorOf(this);
     const borderWidth = (alreadyScaled ? 1 : scalingFactor) * (Settings.WINDOW_BORDER_WIDTH / (alreadyScaled ? scalingFactor : 1));
-    this._scaledBorderWidth = scalingFactor * Settings.WINDOW_BORDER_WIDTH;
+    this._scaledBorderWidth = (alreadyScaled ? 1 : scalingFactor) * Settings.WINDOW_BORDER_WIDTH;
     const borderColor = Settings.WINDOW_USE_CUSTOM_BORDER_COLOR ? Settings.WINDOW_BORDER_COLOR : "-st-accent-color";
     const radius = this._borderRadiusValue.map((val) => {
       const valWithBorder = val === 0 ? val : val + borderWidth;

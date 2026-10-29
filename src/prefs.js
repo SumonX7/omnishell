@@ -82,6 +82,24 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
       Gio.resources_unregister(this._resource);
       this._resource = null;
     }
+    this._disconnectSettings();
+  }
+
+  _connectSetting(settingsObj, signal, handler) {
+    if (!settingsObj) return 0;
+    const id = settingsObj.connect(signal, handler);
+    if (!this._settingsSignals) this._settingsSignals = [];
+    this._settingsSignals.push({ obj: settingsObj, id });
+    return id;
+  }
+
+  _disconnectSettings() {
+    if (this._settingsSignals) {
+      this._settingsSignals.forEach(({ obj, id }) => {
+        try { obj.disconnect(id); } catch {}
+      });
+      this._settingsSignals = [];
+    }
   }
 
   /**
@@ -253,11 +271,12 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
         customColorDropDown.set_selected(index);
       colorButton.set_visible(useCustom);
     };
-    borderColorSettings.connect(
+    this._connectSetting(
+      borderColorSettings,
       "changed::window-use-custom-border-color",
       syncCustomColorDropdown
     );
-    borderColorSettings.connect("changed::window-border-color", () => {
+    this._connectSetting(borderColorSettings, "changed::window-border-color", () => {
       const rgba = this._getRGBAFromString(Settings.WINDOW_BORDER_COLOR);
       if (colorButton.set_rgba) colorButton.set_rgba(rgba);
     });
@@ -346,7 +365,7 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
       // decrease the icon size) was not reflected here, and the next
       // interaction with this row silently overwrote the DING change.
       if (dingSettings) {
-        dingSettings.connect("changed::icon-size", () => {
+        this._connectSetting(dingSettings, "changed::icon-size", () => {
           const index = sizeMap.indexOf(dingSettings.get_string("icon-size"));
           if (index !== -1 && iconSizeRow.selected !== index)
             iconSizeRow.selected = index;
@@ -1408,7 +1427,6 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
       let child = expanderRow.get_first_child();
       // The ExpanderRow has internal children (header, list); we track our
       // own chip rows via a tagged box instead.
-      chipsBox.get_first_child();
       // Clear the chips box by removing all children.
       let c = chipsBox.get_first_child();
       while (c) {
@@ -1520,7 +1538,7 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
         const val = entry.get_text().trim();
         if (val.length > 0) {
           const current = Settings.gioSetting.get_strv(Settings.KEY_TILING_EXCLUDED_APPS) || [];
-          if (!current.includes(val)) {
+          if (!current.some((c) => c.trim().toLowerCase() === val.toLowerCase())) {
             current.push(val);
             Settings.gioSetting.set_strv(Settings.KEY_TILING_EXCLUDED_APPS, current);
           }
@@ -1543,7 +1561,7 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
 
     // Rebuild chips now and whenever the setting changes.
     rebuildChips();
-    Settings.gioSetting.connect(`changed::${Settings.KEY_TILING_EXCLUDED_APPS}`, () => {
+    this._connectSetting(Settings.gioSetting, `changed::${Settings.KEY_TILING_EXCLUDED_APPS}`, () => {
       rebuildChips();
     });
 
@@ -1770,10 +1788,15 @@ const ShortcutSettingButton = (_a = class extends Gtk.Button {
     });
     this._backwardKey = backwardKey;
     this.connect("clicked", this._onActivated.bind(this));
-    gioSettings.connect(`changed::${settingsKey}`, () => {
+    const settingsSignalId = gioSettings.connect(`changed::${settingsKey}`, () => {
       const strv = gioSettings.get_strv(settingsKey);
       this.shortcut = strv && strv.length > 0 && strv[0] ? strv[0] : "";
       this._label.set_accelerator(this.shortcut);
+    });
+    this.connect("destroy", () => {
+      try {
+        gioSettings.disconnect(settingsSignalId);
+      } catch {}
     });
     const strv = gioSettings.get_strv(settingsKey);
     this.shortcut = strv && strv.length > 0 && strv[0] ? strv[0] : "";
@@ -1790,6 +1813,10 @@ const ShortcutSettingButton = (_a = class extends Gtk.Button {
   }
 
   _onActivated(widget) {
+    if (this._editor) {
+      try { this._editor.destroy(); } catch {}
+      this._editor = null;
+    }
     const ctl = new Gtk.EventControllerKey();
     const content = new Adw.StatusPage({
       title: _("New accelerator\u2026"),
@@ -1815,18 +1842,21 @@ const ShortcutSettingButton = (_a = class extends Gtk.Button {
     let mask = state & Gtk.accelerator_get_default_mod_mask();
     mask &= ~Gdk.ModifierType.LOCK_MASK;
     if (!mask && keyval === Gdk.KEY_Escape) {
-      this._editor?.close();
+      this._editor?.destroy();
+      this._editor = null;
       return Gdk.EVENT_STOP;
     }
     if (keyval === Gdk.KEY_BackSpace) {
       this._updateShortcut("");
-      this._editor?.close();
+      this._editor?.destroy();
+      this._editor = null;
       return Gdk.EVENT_STOP;
     }
     if (!this.isValidBinding(mask, keycode, keyval) || !this.isValidAccel(mask, keyval))
       return Gdk.EVENT_STOP;
     if (!keyval && !keycode) {
       this._editor?.destroy();
+      this._editor = null;
       return Gdk.EVENT_STOP;
     } else {
       const val = Gtk.accelerator_name_with_keycode(
@@ -1838,15 +1868,23 @@ const ShortcutSettingButton = (_a = class extends Gtk.Button {
       this._updateShortcut(val);
     }
     this._editor?.destroy();
+    this._editor = null;
     return Gdk.EVENT_STOP;
   }
 
   _updateShortcut(val) {
-    this.shortcut = val;
+    this.shortcut = val || "";
     this._label.set_accelerator(this.shortcut);
-    this._gioSettings.set_strv(this._settingsKey, [this.shortcut]);
-    if (this._backwardKey) {
-      this._gioSettings.set_strv(this._backwardKey, [`<Shift>${this.shortcut}`]);
+    if (!this.shortcut) {
+      this._gioSettings.set_strv(this._settingsKey, []);
+      if (this._backwardKey) {
+        this._gioSettings.set_strv(this._backwardKey, []);
+      }
+    } else {
+      this._gioSettings.set_strv(this._settingsKey, [this.shortcut]);
+      if (this._backwardKey) {
+        this._gioSettings.set_strv(this._backwardKey, [`<Shift>${this.shortcut}`]);
+      }
     }
     this.emit("changed", this.shortcut);
   }
