@@ -10,8 +10,8 @@
         "50",
         "51"
     ],
-    "version": 109,
-    "version-name": "1.0.9",
+    "version": 105,
+    "version-name": "1.0.5",
     "url": "https://github.com/SumonX7/OmniShell",
     "settings-schema": "org.gnome.shell.extensions.tilingshell",
     "gettext-domain": "tilingshell"

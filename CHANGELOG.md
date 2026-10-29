@@ -5,7 +5,7 @@ All notable changes to OmniShell are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.9] - 2026-10-29
+## [1.0.5] - 2026-10-29
 
 ### 🚀 Dynamic Tiling Gap-Fill & Reflow Stability
 * **Automatic Gap-Filling on Window Destruction**:

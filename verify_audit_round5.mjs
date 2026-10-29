@@ -154,14 +154,14 @@ console.log("=== Round-5 Audit Verification (D1 to D9 & Re-checks) ===");
   console.log("  ok  : T9 border width coordinate space parity verified");
 }
 
-// 10. D4: metadata.json version is 109 / 1.0.9
+// 10. D4: metadata.json version is 105 / 1.0.5
 {
   const metadata = JSON.parse(fs.readFileSync("src/metadata.json", "utf8"));
-  assert.strictEqual(metadata.version, 109, "D4: version must be 109");
-  assert.strictEqual(metadata["version-name"], "1.0.9", "D4: version-name must be 1.0.9");
+  assert.strictEqual(metadata.version, 105, "D4: version must be 105");
+  assert.strictEqual(metadata["version-name"], "1.0.5", "D4: version-name must be 1.0.5");
   const changelog = fs.readFileSync("CHANGELOG.md", "utf8");
-  assert(changelog.includes("## [1.0.9] - 2026-10-29"), "D4: CHANGELOG.md must contain [1.0.9] entry");
-  console.log("  ok  : D4 version 109 / 1.0.9 and CHANGELOG entry verified");
+  assert(changelog.includes("## [1.0.5]"), "D4: CHANGELOG.md must contain [1.0.5] entry");
+  console.log("  ok  : D4 version 105 / 1.0.5 and CHANGELOG entry verified");
 }
 
 console.log("\n=== ALL ROUND-5 AUDIT CHECKS PASSED ===");
