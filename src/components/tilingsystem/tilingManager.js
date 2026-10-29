@@ -704,11 +704,13 @@ class TilingManager {
     this._dragSettings = null;
     this._snapAssistingInfo.update(void 0);
     this._edgeTilingManager.abortEdgeTiling();
-    this._workspaceTilingLayout.forEach((tl) => tl.destroy());
+    this._workspaceTilingLayout.forEach((tl) => {
+      try { tl.destroy(); } catch {}
+    });
     this._workspaceTilingLayout.clear();
-    this._snapAssist.destroy();
-    this._selectedTilesPreview.destroy();
-    this._tilingSuggestionsLayout.destroy();
+    try { this._snapAssist?.destroy(); } catch {}
+    try { this._selectedTilesPreview?.destroy(); } catch {}
+    try { this._tilingSuggestionsLayout?.destroy(); } catch {}
   }
 
   set workArea(newWorkArea) {

@@ -231,12 +231,13 @@ class DingBridge {
     const ws = global.workspaceManager?.get_active_workspace?.() || global.workspace_manager?.get_active_workspace?.();
     const { scaleFactor } = St.ThemeContext.get_for_stage(global.stage);
     for (let monitorIndex = 0; monitorIndex < Main.layoutManager.monitors.length; monitorIndex++) {
+      const mon = Main.layoutManager.monitors[monitorIndex];
       const area = this.visibleArea?.getMonitorGeometry(ws, monitorIndex) ?? {
-        x: 0,
-        y: 0,
-        width: 1920,
-        height: 1080,
-        scale: 1,
+        x: mon?.x ?? 0,
+        y: mon?.y ?? 0,
+        width: mon?.width ?? 1920,
+        height: mon?.height ?? 1080,
+        scale: scaleFactor ?? 1,
         marginTop: 0,
         marginBottom: 0,
         marginLeft: 0,

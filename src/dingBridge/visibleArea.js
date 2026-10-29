@@ -48,12 +48,13 @@ const _VisibleArea = class _VisibleArea extends GObject.Object {
 
   _refreshMargins() {
     this._usableAreas = {};
+    const primaryIndex = Main.layoutManager.primaryIndex ?? 0;
     for (const extensionUUID in this._marginsList) {
       const margins = this._marginsList[extensionUUID];
-      for (const workspace in margins) {
-        let index = workspace;
-        if (Number(workspace) < 0) {
-          index = String(Main.layoutManager.primaryIndex);
+      for (const monitorKey in margins) {
+        let index = monitorKey;
+        if (Number(monitorKey) < 0) {
+          index = String(primaryIndex);
         }
         if (!(index in this._usableAreas)) {
           this._usableAreas[index] = {
@@ -66,7 +67,7 @@ const _VisibleArea = class _VisibleArea extends GObject.Object {
         for (const side of ["top", "bottom", "left", "right"]) {
           this._usableAreas[index][side] = Math.max(
             this._usableAreas[index][side],
-            margins[workspace][side] || 0
+            margins[monitorKey][side] || 0
           );
         }
       }
@@ -91,11 +92,16 @@ const _VisibleArea = class _VisibleArea extends GObject.Object {
     const windowMarginLeft = marginLeft;
     const windowMarginRight = marginRight;
     const strIndex = String(monitorIndex);
-    if (strIndex in this._usableAreas) {
-      marginTop = Math.max(marginTop, this._usableAreas[strIndex].top);
-      marginBottom = Math.max(marginBottom, this._usableAreas[strIndex].bottom);
-      marginLeft = Math.max(marginLeft, this._usableAreas[strIndex].left);
-      marginRight = Math.max(marginRight, this._usableAreas[strIndex].right);
+    const isPrimary = monitorIndex === (Main.layoutManager.primaryIndex ?? 0);
+    const lookupKeys = [strIndex];
+    if (isPrimary && !lookupKeys.includes("-1")) lookupKeys.push("-1");
+    for (const key of lookupKeys) {
+      if (key in this._usableAreas) {
+        marginTop = Math.max(marginTop, this._usableAreas[key].top);
+        marginBottom = Math.max(marginBottom, this._usableAreas[key].bottom);
+        marginLeft = Math.max(marginLeft, this._usableAreas[key].left);
+        marginRight = Math.max(marginRight, this._usableAreas[key].right);
+      }
     }
     if (Settings.DESKTOP_ICONS_SAFE_ZONE) {
       const outerGaps = Settings.OUTER_GAPS || 0;

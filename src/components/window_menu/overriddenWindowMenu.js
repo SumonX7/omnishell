@@ -102,8 +102,8 @@ const _OverriddenWindowMenu = class _OverriddenWindowMenu extends GObject.Object
         (win) => innerRect.overlap(win.get_frame_rect())
       );
     });
-    const enableScaling = window.get_monitor() === Main.layoutManager.primaryIndex;
     const scalingFactor = getMonitorScalingFactor(window.get_monitor());
+    const enableScaling = Boolean(scalingFactor);
     if (vacantTiles.length > 0) {
       vacantTiles.sort((a, b) => a.x - b.x);
       let bestTileIndex = 0;

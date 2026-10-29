@@ -230,7 +230,6 @@ const _TilingLayout = class _TilingLayout extends LayoutWidget {
   _subtractRectangles(sourceRect, holeRect) {
     const [hasIntersection, intersection] = sourceRect.intersect(holeRect);
     if (!hasIntersection) return [false, [sourceRect]];
-    const sourceArea = sourceRect.area();
     // A hole that covers all but a sliver of the source rectangle leaves
     // behind sub-pixel remnants. Those cannot hold a window and they make
     // the tiling arithmetic produce fractional tiles, so they are dropped.

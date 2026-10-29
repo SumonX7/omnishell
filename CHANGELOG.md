@@ -5,6 +5,34 @@ All notable changes to OmniShell are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2026-10-29
+
+### 🚀 Dynamic Tiling Gap-Fill & Reflow Stability
+* **Automatic Gap-Filling on Window Destruction**:
+  * Fixed bug where closing a window left an empty gap; remaining windows now smoothly expand and reflow to fill 100% of the available workspace.
+  * Added `assignedTile` cleanup on dynamic un-tracking and hardened `_reflowDynamicWindows` against non-reflowing windows.
+* **Wayland Workspace Race & Split Target Hardening**:
+  * Resolved workspace determination race during Wayland window creation (`window.get_workspace()` returning null).
+  * Re-resolves split target on dynamic add rather than reusing stale workspace split targets.
+
+### 🛡️ Multi-Round Audit & System Hardening (Rounds 1–5)
+* **Desktop Icons (DING) Margins & Geometry Integration (D1, D2, D5)**:
+  * Exported `DesktopIconsUsableArea` on extension instance and exposed `SetMarginsForExtension` on D-Bus.
+  * Fixed margin indexing to use monitor keys with proper primary monitor (`-1`) resolution.
+  * Replaced hardcoded `1920x1080` fallback in `getDesktopGeometry()` with live monitor bounds.
+* **Window Border & Scaling Consistency (T8, T9, D8, D9)**:
+  * Unified `borderWidth` and `_scaledBorderWidth` coordinate spaces to prevent `sf²` over-scaling.
+  * Connected `KEY_ENABLE_SMART_WINDOW_BORDER_RADIUS` for dynamic radius recalculations.
+  * Enabled scaling support for window menu previews across all monitors (including secondary HiDPI).
+  * Removed artificial outer gap padding in `LayoutTileButtons` preview widgets.
+* **Preferences & Lifecycle Leaks (T1–T5, D6, D7)**:
+  * Added centralized `_connectSetting` and disconnected all settings signals on prefs window destroy and close-request.
+  * Handled shortcut clearing cleanly with empty array `[]` and preserved user-customized backward shortcuts when updating forward shortcuts.
+  * Safely destroyed `Adw.PreferencesWindow` child dialogs on parent destruction.
+  * Hardened `tilingManager.destroy()` against throws during component teardown.
+* **Translations & Catalogues (R1, R3)**:
+  * Rebuilt `tilingshell.pot` template and compiled all 14 locale message catalogues (`.mo`).
+
 ## [1.0.8] - 2026-10-28
 
 ### 🚀 Dynamic Tiling & Gap Management Fixes

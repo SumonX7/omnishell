@@ -243,11 +243,11 @@ const _WindowBorder = class _WindowBorder extends St.DrawingArea {
     const monitorScalingFactor = this._enableScaling ? getMonitorScalingFactor(this._window.get_monitor()) : void 0;
     enableScalingFactorSupport(this, monitorScalingFactor);
     const [alreadyScaled, scalingFactor] = getScalingFactorOf(this);
-    const borderWidth = (alreadyScaled ? 1 : scalingFactor) * (Settings.WINDOW_BORDER_WIDTH / (alreadyScaled ? scalingFactor : 1));
-    this._scaledBorderWidth = (alreadyScaled ? 1 : scalingFactor) * Settings.WINDOW_BORDER_WIDTH;
+    const borderWidth = (alreadyScaled ? 1 : scalingFactor) * Settings.WINDOW_BORDER_WIDTH;
+    this._scaledBorderWidth = borderWidth;
     const borderColor = Settings.WINDOW_USE_CUSTOM_BORDER_COLOR ? Settings.WINDOW_BORDER_COLOR : "-st-accent-color";
     const radius = this._borderRadiusValue.map((val) => {
-      const valWithBorder = val === 0 ? val : val + borderWidth;
+      const valWithBorder = val === 0 ? val : val + Settings.WINDOW_BORDER_WIDTH;
       return (alreadyScaled ? 1 : scalingFactor) * (valWithBorder / (alreadyScaled ? scalingFactor : 1));
     });
     const scalingFactorSupportString = monitorScalingFactor ? `${getScalingFactorSupportString(monitorScalingFactor)};` : "";

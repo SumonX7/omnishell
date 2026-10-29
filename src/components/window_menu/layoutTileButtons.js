@@ -3,13 +3,13 @@ import { registerGObjectClass } from "../../utils/gjs.js";
 import { buildMarginOf, buildRectangle, getScalingFactorOf } from "../../utils/ui.js";
 import SnapAssistTileButton from "../snapassist/snapAssistTileButton.js";
 const _LayoutTileButtons = class _LayoutTileButtons extends LayoutWidget {
-  constructor(parent, layout, gapSize, height, width) {
+  constructor(parent, layout, gapSize, height, width, outerGapSize = 0) {
     super({
       parent,
       layout,
       containerRect: buildRectangle(),
       innerGaps: buildMarginOf(gapSize),
-      outerGaps: buildMarginOf(gapSize),
+      outerGaps: buildMarginOf(outerGapSize),
       styleClass: "window-menu-layout"
     });
     const [, scalingFactor] = getScalingFactorOf(this);

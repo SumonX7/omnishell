@@ -1,6 +1,10 @@
 const node = `<node>
     <interface name="org.gnome.Shell.Extensions.TilingShell">
         <method name="openLayoutEditor" />
+        <method name="SetMarginsForExtension">
+            <arg type="s" direction="in" name="extensionUUID" />
+            <arg type="s" direction="in" name="marginsJson" />
+        </method>
     </interface>
 </node>`;
 import { Gio } from "./gi/ext.js";

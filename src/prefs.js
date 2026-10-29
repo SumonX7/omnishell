@@ -1285,8 +1285,13 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
     // window goes away: a registered resource path cannot be registered
     // a second time, so leaving it in place made the second opening of
     // the preferences tool fail to load the extension's icons.
-    window.connect("close-request", () => {
+    const cleanupPrefs = () => {
+      try { keybindingsDialog?.destroy(); } catch {}
       this.unloadCssAndResources();
+    };
+    window.connect("destroy", cleanupPrefs);
+    window.connect("close-request", () => {
+      cleanupPrefs();
       return false;
     });
     return Promise.resolve();
@@ -1873,17 +1878,24 @@ const ShortcutSettingButton = (_a = class extends Gtk.Button {
   }
 
   _updateShortcut(val) {
+    const oldVal = this.shortcut;
     this.shortcut = val || "";
     this._label.set_accelerator(this.shortcut);
     if (!this.shortcut) {
       this._gioSettings.set_strv(this._settingsKey, []);
       if (this._backwardKey) {
-        this._gioSettings.set_strv(this._backwardKey, []);
+        const currentBackward = this._gioSettings.get_strv(this._backwardKey)?.[0] || "";
+        if (!currentBackward || currentBackward === `<Shift>${oldVal}`) {
+          this._gioSettings.set_strv(this._backwardKey, []);
+        }
       }
     } else {
       this._gioSettings.set_strv(this._settingsKey, [this.shortcut]);
       if (this._backwardKey) {
-        this._gioSettings.set_strv(this._backwardKey, [`<Shift>${this.shortcut}`]);
+        const currentBackward = this._gioSettings.get_strv(this._backwardKey)?.[0] || "";
+        if (!currentBackward || currentBackward === `<Shift>${oldVal}`) {
+          this._gioSettings.set_strv(this._backwardKey, [`<Shift>${this.shortcut}`]);
+        }
       }
     }
     this.emit("changed", this.shortcut);

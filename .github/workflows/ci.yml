@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "fix/*" ]
     tags: [ "v*" ]
   pull_request:
   workflow_dispatch:
@@ -29,32 +29,8 @@ jobs:
             zip \
             unzip
 
-      - name: Check the JavaScript syntax
-        run: node check_syntax.mjs
-
-      - name: Compile the GSettings schemas (strict)
-        run: glib-compile-schemas --strict src/schemas
-
-      - name: Verify the bug fixes
-        run: node verify_fixes.mjs
-
-      - name: Verify the SortOrder round trip
-        run: node verify_round2.mjs
-
-      - name: Verify the dynamic-layout cache
-        run: node verify_perf.mjs
-
-      - name: Verify the DING desktop refresh
-        run: node verify_ding_refresh.mjs
-
-      - name: Verify that every audit claim is resolved
-        run: node verify_claims.mjs
-
-      - name: Verify pin handling
-        run: node verify_pins.mjs
-
-      - name: Check dynamic-layout math
-        run: node test_dyn.mjs
+      - name: Run all verification test suites
+        run: make check
 
       - name: Build the resource bundle
         run: |

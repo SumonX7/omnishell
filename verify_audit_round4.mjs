@@ -97,8 +97,9 @@ console.log("=== Round-4 Audit Verification (T1 to T10) ===");
 {
   const wbSrc = fs.readFileSync("src/components/windowBorder/windowBorder.js", "utf8");
   assert.ok(
-    wbSrc.includes("this._scaledBorderWidth = (alreadyScaled ? 1 : scalingFactor) * Settings.WINDOW_BORDER_WIDTH;"),
-    "T9: windowBorder.js must account for alreadyScaled in _scaledBorderWidth"
+    wbSrc.includes("const borderWidth = (alreadyScaled ? 1 : scalingFactor) * Settings.WINDOW_BORDER_WIDTH;") &&
+    wbSrc.includes("this._scaledBorderWidth = borderWidth;"),
+    "T9: windowBorder.js must account for alreadyScaled in borderWidth and _scaledBorderWidth"
   );
   console.log("  ok  : T9 border width scaling factor consistency verified");
 }

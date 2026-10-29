@@ -242,11 +242,21 @@ class TilingShellExtension extends Extension {
       }
     };
     this._dingBridge.enable();
+    this.DesktopIconsUsableArea = this._dingBridge?.visibleArea;
     debug("extension is enabled");
   }
 
   openLayoutEditor() {
     this._indicator?.openLayoutEditor();
+  }
+
+  SetMarginsForExtension(extensionUUID, marginsJson) {
+    try {
+      const margins = typeof marginsJson === "string" ? JSON.parse(marginsJson) : marginsJson;
+      this._dingBridge?.visibleArea?.setMarginsForExtension(extensionUUID, margins);
+    } catch (e) {
+      log(`Failed to set margins for extension: ${e.message}`);
+    }
   }
 
   _createTilingManagers() {
@@ -692,6 +702,7 @@ class TilingShellExtension extends Extension {
     this._raiseTogetherManager = null;
     this._dingBridge?.disable();
     this._dingBridge = null;
+    this.DesktopIconsUsableArea = null;
     this._dbus?.disable();
     this._dbus = null;
     this._mutterSettings = null;
