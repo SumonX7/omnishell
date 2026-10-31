@@ -30,6 +30,34 @@ import * as Config from "resource:///org/gnome/Shell/Extensions/js/misc/config.j
 const debug = logger("prefs");
 const RESOURCES_PREFIX = "/com/spark/omnishell";
 
+function validateImportedLayouts(layouts, existingLayouts) {
+  if (!Array.isArray(layouts) || layouts.length === 0)
+    throw new Error("At least one layout is required");
+  const usedIds = new Set(existingLayouts.map((layout) => layout.id));
+  return layouts.map((layout, layoutIndex) => {
+    if (!layout || typeof layout !== "object" ||
+        typeof layout.id !== "string" || layout.id.trim() === "" ||
+        !Array.isArray(layout.tiles) || layout.tiles.length === 0)
+      throw new Error(`Layout ${layoutIndex + 1} has invalid data`);
+    const tiles = layout.tiles.map((tile, tileIndex) => {
+      const validNumber = (value) => typeof value === "number" && Number.isFinite(value);
+      if (!tile || typeof tile !== "object" ||
+          !validNumber(tile.x) || !validNumber(tile.y) ||
+          !validNumber(tile.width) || !validNumber(tile.height) ||
+          tile.x < 0 || tile.y < 0 || tile.width <= 0 || tile.height <= 0 ||
+          tile.x + tile.width > 1.000001 || tile.y + tile.height > 1.000001 ||
+          !Array.isArray(tile.groups) ||
+          !tile.groups.every((group) => Number.isFinite(group)))
+        throw new Error(`Layout ${layoutIndex + 1}, tile ${tileIndex + 1} has invalid geometry`);
+      return { ...tile, groups: [...tile.groups] };
+    });
+    let id = layout.id.trim();
+    if (usedIds.has(id)) id = `${id} (imported ${GLib.uuid_string_random()})`;
+    usedIds.add(id);
+    return { ...layout, id, tiles };
+  });
+}
+
 class TilingShellExtensionPreferences extends ExtensionPreferences {
   GNOME_VERSION_MAJOR = Number(Config.PACKAGE_VERSION.split(".")[0]);
   _resource;
@@ -100,6 +128,19 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
       });
       this._settingsSignals = [];
     }
+  }
+
+  _showErrorDialog(parent, title, error) {
+    const dialog = new Gtk.MessageDialog({
+      transient_for: parent,
+      modal: true,
+      buttons: Gtk.ButtonsType.OK,
+      message_type: Gtk.MessageType.ERROR,
+      text: title
+    });
+    dialog.secondary_text = String(error?.message ?? error);
+    dialog.connect("response", () => dialog.destroy());
+    dialog.present();
   }
 
   /**
@@ -304,6 +345,15 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
         2e3
       )
     );
+    animationsRow.add_row(
+      this._buildSpinButtonRow(
+        Settings.KEY_DYNAMIC_TILING_ANIMATION_TIME,
+        _("Dynamic reflow animation time"),
+        _("Duration of dynamic window reflows in milliseconds; zero disables animation"),
+        0,
+        2e3
+      )
+    );
     const desktopGroup = new Adw.PreferencesGroup({
       title: _("Desktop Icons (Fusion Engine)"),
       description: _("Configure the integrated Desktop Icons NG engine, icon sizing, and safe zones")
@@ -474,6 +524,40 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
       "sensitive"
     );
     behaviourGroup.add(snapAssistSyncLayoutRow);
+    const dynamicPlacementModel = new Gtk.StringList();
+    dynamicPlacementModel.append(_("Split focused window"));
+    dynamicPlacementModel.append(_("Split largest tile"));
+    const dynamicPlacementRow = new Adw.ComboRow({
+      title: _("Dynamic placement policy"),
+      subtitle: _("Choose where the next dynamic window creates its split"),
+      model: dynamicPlacementModel
+    });
+    const dynamicPlacementValues = ["focused", "largest"];
+    const syncDynamicPlacement = () => {
+      const index = dynamicPlacementValues.indexOf(Settings.DYNAMIC_PLACEMENT_POLICY);
+      if (index >= 0 && dynamicPlacementRow.selected !== index)
+        dynamicPlacementRow.selected = index;
+    };
+    syncDynamicPlacement();
+    dynamicPlacementRow.connect("notify::selected", () => {
+      const value = dynamicPlacementValues[dynamicPlacementRow.selected];
+      if (value) Settings.DYNAMIC_PLACEMENT_POLICY = value;
+    });
+    this._connectSetting(
+      Settings.gioSetting,
+      `changed::${Settings.KEY_DYNAMIC_PLACEMENT_POLICY}`,
+      syncDynamicPlacement
+    );
+    behaviourGroup.add(dynamicPlacementRow);
+    behaviourGroup.add(
+      this._buildSpinButtonRow(
+        Settings.KEY_MAX_DYNAMIC_WINDOWS_PER_MONITOR,
+        _("Maximum dynamic windows per monitor"),
+        _("Additional windows on each monitor stay floating; zero means unlimited"),
+        0,
+        20
+      )
+    );
     const enableTilingSystemRow = this._buildSwitchRow(
       Settings.KEY_TILING_SYSTEM,
       _("Enable Tiling System"),
@@ -738,28 +822,27 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
                 debug(`Selected path ${file.get_path()}`);
                 const [success, content] = file.load_contents(null);
                 if (success) {
-                  let importedLayouts = JSON.parse(
+                  const parsedLayouts = JSON.parse(
                     new TextDecoder("utf-8").decode(
                       content
                     )
                   );
-                  if (importedLayouts.length === 0) {
-                    throw new Error(
-                      "At least one layout is required"
-                    );
-                  }
-                  importedLayouts = importedLayouts.filter(
-                    (layout) => layout.tiles.length > 0
-                  );
                   const newLayouts = Settings.get_layouts_json();
+                  const importedLayouts = validateImportedLayouts(parsedLayouts, newLayouts);
                   newLayouts.push(...importedLayouts);
                   Settings.save_layouts_json(newLayouts);
                 } else {
                   debug("Error while opening file");
+                  this._showErrorDialog(
+                    window,
+                    _("Could not import layouts"),
+                    new Error(_("The selected file could not be read"))
+                  );
                 }
               }
             } catch (error) {
               debug(error);
+              this._showErrorDialog(window, _("Could not import layouts"), error);
             }
             _source.destroy();
           }

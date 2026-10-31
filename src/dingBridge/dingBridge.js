@@ -12,6 +12,11 @@ import { LaunchSubprocess } from "./launchSubprocess.js";
 import Settings from "../settings/settings.js";
 import { DING_BUS_NAME, DING_CONTROL_PATH } from "../app/dingBusNames.js";
 import { setDingBridge, clearDingBridge } from "./dingBridgeAccess.js";
+import { isShellStartingUp } from "../utils/gnomesupport.js";
+
+const DING_RESTART_MIN_MS = 1e3;
+const DING_RESTART_MAX_MS = 30e3;
+const DING_STABLE_RUNTIME_US = 30e6;
 
 class DingBridge {
   _extensionPath;
@@ -21,6 +26,7 @@ class DingBridge {
   _isEnabled;
   _launchDesktopId;
   _launchTime;
+  _restartDelayMs;
   _dbusConnection;
   _dbusConnectionId;
   _dbusConnectionGroupId;
@@ -45,6 +51,7 @@ class DingBridge {
     this._isEnabled = false;
     this._launchDesktopId = 0;
     this._launchTime = 0;
+    this._restartDelayMs = DING_RESTART_MIN_MS;
     this._lastFolderOpenTime = 0;
     this._folderOpenedAction = null;
     this._dbusConnection = null;
@@ -103,7 +110,7 @@ class DingBridge {
     if (!this.visibleArea) {
       this.visibleArea = new VisibleArea();
     }
-    if (Main.layoutManager._startingUp) {
+    if (isShellStartingUp(Main.layoutManager)) {
       this._startupPreparedId = Main.layoutManager.connect(
         "startup-complete",
         () => this._innerEnable()
@@ -297,24 +304,33 @@ class DingBridge {
     this._currentProcess = new LaunchSubprocess(0, "DING");
     this._currentProcess.setCwd(GLib.get_home_dir());
     if (this._currentProcess.spawnv(argv) === null) {
-      this._doRelaunch(1e3);
+      this._scheduleRelaunch(false);
       return;
     }
     this._x11Manager?.setWaylandClient(this._currentProcess);
     this._launchTime = GLib.get_monotonic_time();
     this._currentProcess.subprocess?.wait_async(null, (obj, res) => {
       const delta = GLib.get_monotonic_time() - this._launchTime;
-      let reloadTime = 1;
-      if (delta < 1e6) {
-        reloadTime = 1e3;
-      }
+      const stableRuntime = delta >= DING_STABLE_RUNTIME_US;
       try {
         obj.wait_finish(res);
       } catch {
       }
       if (!this._currentProcess || obj !== this._currentProcess.subprocess) return;
-      this._doRelaunch(reloadTime);
+      this._scheduleRelaunch(stableRuntime);
     });
+  }
+
+  _scheduleRelaunch(stableRuntime) {
+    if (stableRuntime) this._restartDelayMs = DING_RESTART_MIN_MS;
+    const delay = this._restartDelayMs;
+    if (!stableRuntime) {
+      this._restartDelayMs = Math.min(
+        DING_RESTART_MAX_MS,
+        this._restartDelayMs * 2
+      );
+    }
+    this._doRelaunch(delay);
   }
 
   _doRelaunch(reloadTime) {

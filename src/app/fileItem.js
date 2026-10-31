@@ -599,22 +599,48 @@ export var FileItem = class extends desktopIconItem.desktopIconItem {
 
         this.connectSignal(dropTarget, 'drop', async (widget, drop, x, y) => {
             const dropInfo = await dndClipboardUtils.manageIconDrop(this, drop, x, y);
-            if (dropInfo === null)
+            if (dropInfo === null) {
+                drop.finish(Gdk.DragAction.NONE);
                 return false;
+            }
 
 
             if (this.trustedDesktopFile) {
-                this.doOpen(null, dropInfo.filelist);
-                return true;
+                if (dropInfo.filelist.length === 0) {
+                    drop.finish(Gdk.DragAction.NONE);
+                    return false;
+                }
+                try {
+                    this.doOpen(null, dropInfo.filelist);
+                    drop.finish(dropInfo.action);
+                    return true;
+                } catch (e) {
+                    print(`Error: ${e}\n`);
+                    drop.finish(Gdk.DragAction.NONE);
+                    return false;
+                }
             }
 
+            if (dropInfo.filelist.length === 0) {
+                drop.finish(Gdk.DragAction.NONE);
+                return false;
+            }
+            let finished = false;
+            const finishDrop = (success) => {
+                if (finished) return;
+                finished = true;
+                drop.finish(success ? dropInfo.action : Gdk.DragAction.NONE);
+            };
             try {
-                if (dropInfo.action === Gdk.DragAction.MOVE)
-                    DBusUtils.RemoteFileOperations.MoveURIsRemote(dropInfo.filelist, this.uri);
-                else
-                    DBusUtils.RemoteFileOperations.CopyURIsRemote(dropInfo.filelist, this.uri);
+                const callback = (_result, error) => finishDrop(!error);
+                if (dropInfo.action === Gdk.DragAction.MOVE) {
+                    DBusUtils.RemoteFileOperations.MoveURIsRemote(dropInfo.filelist, this.uri, callback);
+                } else {
+                    DBusUtils.RemoteFileOperations.CopyURIsRemote(dropInfo.filelist, this.uri, callback);
+                }
             } catch (e) {
                 print(`Error: ${e}\n`);
+                finishDrop(false);
             }
             return true;
         });

@@ -5,7 +5,8 @@ const dconfPath = "/org/gnome/shell/extensions/tilingshell/";
 const excludedKeys = [
   Settings.KEY_SETTING_LAYOUTS_JSON,
   Settings.KEY_LAST_VERSION_NAME_INSTALLED,
-  Settings.KEY_OVERRIDDEN_SETTINGS
+  Settings.KEY_OVERRIDDEN_SETTINGS,
+  "omnishell-migrations-applied"
 ];
 
 class SettingsExport {
@@ -26,7 +27,7 @@ class SettingsExport {
         ["dconf", "load", dconfPath],
         Gio.SubprocessFlags.STDIN_PIPE
       );
-      proc.communicate_utf8(content, null);
+      proc.communicate_utf8(this._excludeKeys(content), null);
       if (!proc.get_successful()) {
         throw new Error("Failed to load dconf dump");
       }
@@ -71,7 +72,7 @@ class SettingsExport {
   }
 
   _excludeKeys(dconfDump) {
-    if (dconfDump.length === 0) throw new Error("Empty dconf dump");
+    if (dconfDump.trim().length === 0) return "";
     const keyFile = new GLib.KeyFile();
     const length = new TextEncoder().encode(dconfDump).length;
     if (!keyFile.load_from_data(dconfDump, length, GLib.KeyFileFlags.NONE))
@@ -81,8 +82,7 @@ class SettingsExport {
       if (excludedKeys.includes(key)) keyFile.remove_key("/", key);
     });
     const [data] = keyFile.to_data();
-    if (data) return data;
-    else throw new Error("Failed to exclude dconf keys");
+    return data ?? "";
   }
 }
 

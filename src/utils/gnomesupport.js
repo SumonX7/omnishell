@@ -47,6 +47,25 @@ function unmaximizeWindow(window) {
 }
 
 /**
+ * Detects whether Shell startup is still in progress across layout-manager API
+ * generations. The private `_startingUp` field stays isolated as a fallback.
+ */
+function isShellStartingUp(layoutManager = Main.layoutManager) {
+  try {
+    if (typeof layoutManager?.is_starting_up === "function")
+      return Boolean(layoutManager.is_starting_up());
+    if (typeof layoutManager?.isStartupComplete === "function")
+      return !layoutManager.isStartupComplete();
+    if (typeof layoutManager?.startupComplete === "boolean")
+      return !layoutManager.startupComplete;
+    if (typeof layoutManager?._startingUp === "boolean")
+      return layoutManager._startingUp;
+  } catch {
+  }
+  return false;
+}
+
+/**
  * Skips the animation of the next effect on an actor.
  *
  * `Main.wm.skipNextEffect()` is an undocumented method of `Shell.WM`; it has
@@ -77,6 +96,7 @@ function skipNextEffect(actor) {
 export {
   buildBlurEffect,
   getEventCoords,
+  isShellStartingUp,
   maximizeWindow,
   skipNextEffect,
   unmaximizeWindow,

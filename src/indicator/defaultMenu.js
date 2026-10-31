@@ -165,6 +165,20 @@ class DefaultMenu {
     this._indicator.menu.addMenuItem(
       dynamicToggle
     );
+    const refreshTilingItem = new PopupMenu.PopupMenuItem(
+      _("Refresh dynamic tiling")
+    );
+    this._signals.connect(
+      Settings,
+      Settings.KEY_ENABLE_DYNAMIC_TILING,
+      () => refreshTilingItem.setSensitive(Settings.ENABLE_DYNAMIC_TILING)
+    );
+    refreshTilingItem.setSensitive(Settings.ENABLE_DYNAMIC_TILING);
+    refreshTilingItem.connect("activate", () => {
+      this._indicator.refreshDynamicTiling();
+    });
+    this._children.push(refreshTilingItem);
+    this._indicator.menu.addMenuItem(refreshTilingItem);
     const layoutsPopupMenu = new PopupMenu.PopupBaseMenuItem({
       style_class: "indicator-menu-item"
     });

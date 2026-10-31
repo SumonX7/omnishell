@@ -238,17 +238,27 @@ export var DesktopGrid = class extends SignalManager.SignalManager {
 
         this.connectSignal(dropTarget, 'drop', async (widget, drop, x, y) => {
             const dropInfo = await dndClipboardUtils.manageIconDrop(this, drop, x, y);
-            if (dropInfo === null)
+            if (dropInfo === null) {
+                drop.finish(Gdk.DragAction.NONE);
                 return false;
+            }
 
             x = this._elementWidth * Math.floor(x / this._elementWidth);
             y = this._elementHeight * Math.floor(y / this._elementHeight);
             [x, y] = this.coordinatesLocalToGlobal(x, y);
-            try {
-                this._desktopManager.onDragDataReceived(dropInfo, x, y, dropInfo.action === Gdk.DragAction.MOVE);
-            } catch (e) {
-                print(`Error: ${e}\n`);
-            }
+            let finished = false;
+            const finishDrop = (success) => {
+                if (finished) return;
+                finished = true;
+                drop.finish(success ? dropInfo.action : Gdk.DragAction.NONE);
+            };
+            this._desktopManager.onDragDataReceived(
+                dropInfo,
+                x,
+                y,
+                dropInfo.action === Gdk.DragAction.MOVE,
+                finishDrop
+            );
             this._paintContainer.queue_draw();
             return true;
         });

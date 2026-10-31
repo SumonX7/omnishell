@@ -8,6 +8,38 @@ import { GObject, GLib } from "../gi/ext.js";
 import { registerGObjectClass } from "../utils/gjs.js";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import Settings from "../settings/settings.js";
+
+const MARGIN_SIDES = ["top", "bottom", "left", "right"];
+const MAX_MARGIN_PX = 1e5;
+
+function normalizeMargins(margins) {
+  if (!margins || typeof margins !== "object" || Array.isArray(margins))
+    throw new TypeError("Margins must be an object keyed by monitor index");
+  const normalized = Object.create(null);
+  const monitorCount = Main.layoutManager.monitors.length;
+  for (const [monitorKey, values] of Object.entries(margins)) {
+    if (!/^(?:-1|0|[1-9]\d*)$/.test(monitorKey))
+      throw new TypeError(`Invalid monitor index: ${monitorKey}`);
+    const monitorIndex = Number(monitorKey);
+    if (monitorIndex < -1 || monitorIndex >= monitorCount)
+      throw new RangeError(`Monitor index out of range: ${monitorKey}`);
+    if (!values || typeof values !== "object" || Array.isArray(values))
+      throw new TypeError(`Margins for monitor ${monitorKey} must be an object`);
+    const sideValues = Object.create(null);
+    for (const [side, value] of Object.entries(values)) {
+      if (!MARGIN_SIDES.includes(side))
+        throw new TypeError(`Invalid margin side: ${side}`);
+      if (typeof value !== "number" || !Number.isFinite(value) ||
+          value < 0 || value > MAX_MARGIN_PX)
+        throw new RangeError(`Invalid ${side} margin for monitor ${monitorKey}`);
+    }
+    for (const side of MARGIN_SIDES)
+      sideValues[side] = values[side] ?? 0;
+    normalized[monitorKey] = sideValues;
+  }
+  return normalized;
+}
+
 const _VisibleArea = class _VisibleArea extends GObject.Object {
   _usableAreas;
   _marginsList;
@@ -15,8 +47,8 @@ const _VisibleArea = class _VisibleArea extends GObject.Object {
   _extensionUUID = "130cbc66-235c-4bd6-8571-98d2d8bba5e2";
   constructor() {
     super();
-    this._usableAreas = {};
-    this._marginsList = {};
+    this._usableAreas = Object.create(null);
+    this._marginsList = new Map();
     this._refreshTimerId = null;
   }
 
@@ -25,16 +57,19 @@ const _VisibleArea = class _VisibleArea extends GObject.Object {
       GLib.source_remove(this._refreshTimerId);
       this._refreshTimerId = null;
     }
-    this._usableAreas = {};
-    this._marginsList = {};
+    this._usableAreas = Object.create(null);
+    this._marginsList = new Map();
   }
 
   setMarginsForExtension(extensionUUID, margins) {
+    if (typeof extensionUUID !== "string" || extensionUUID.length === 0 ||
+        extensionUUID.length > 255 || /[\u0000-\u001f\u007f]/.test(extensionUUID))
+      throw new TypeError("Invalid extension UUID");
     if (margins === null) {
-      if (!(extensionUUID in this._marginsList)) return;
-      delete this._marginsList[extensionUUID];
+      if (!this._marginsList.has(extensionUUID)) return;
+      this._marginsList.delete(extensionUUID);
     } else {
-      this._marginsList[extensionUUID] = margins;
+      this._marginsList.set(extensionUUID, normalizeMargins(margins));
     }
     if (this._refreshTimerId) {
       GLib.source_remove(this._refreshTimerId);
@@ -47,11 +82,10 @@ const _VisibleArea = class _VisibleArea extends GObject.Object {
   }
 
   _refreshMargins() {
-    this._usableAreas = {};
+    this._usableAreas = Object.create(null);
     const primaryIndex = Main.layoutManager.primaryIndex ?? 0;
-    for (const extensionUUID in this._marginsList) {
-      const margins = this._marginsList[extensionUUID];
-      for (const monitorKey in margins) {
+    for (const margins of this._marginsList.values()) {
+      for (const [monitorKey, monitorMargins] of Object.entries(margins)) {
         let index = monitorKey;
         if (Number(monitorKey) < 0) {
           index = String(primaryIndex);
@@ -64,10 +98,10 @@ const _VisibleArea = class _VisibleArea extends GObject.Object {
             right: 0
           };
         }
-        for (const side of ["top", "bottom", "left", "right"]) {
+        for (const side of MARGIN_SIDES) {
           this._usableAreas[index][side] = Math.max(
             this._usableAreas[index][side],
-            margins[monitorKey][side] || 0
+            monitorMargins[side]
           );
         }
       }

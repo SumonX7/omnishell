@@ -25,6 +25,9 @@ class LaunchSubprocess {
   _waylandClient;
   _dataInputStream;
   _watchdogAttempts;
+  _isWaylandSession;
+  _countedWindows;
+  _mappedMonitorIndices;
   constructor(flags, processId) {
     this._processId = processId;
     this.cancellable = new Gio.Cancellable();
@@ -38,6 +41,9 @@ class LaunchSubprocess {
     this._waylandClient = null;
     this._dataInputStream = null;
     this._watchdogAttempts = 0;
+    this._isWaylandSession = false;
+    this._countedWindows = new WeakSet();
+    this._mappedMonitorIndices = new Set();
   }
 
   setCwd(cwd) {
@@ -46,10 +52,13 @@ class LaunchSubprocess {
 
   spawnv(argv) {
     this._waylandClient = null;
+    this._isWaylandSession = Boolean(Meta.is_wayland_compositor?.());
+    this._countedWindows = new WeakSet();
+    this._mappedMonitorIndices = new Set();
     // `Meta.WaylandClient` also exists on X11 builds, but it cannot attach a
     // subprocess to an X11 compositor. Only use it on an actual Wayland
     // session, and fall back to a normal spawn if it fails for any reason.
-    if (Meta.is_wayland_compositor?.() && Meta.WaylandClient?.new_subprocess) {
+    if (this._isWaylandSession && Meta.WaylandClient?.new_subprocess) {
       try {
         this._waylandClient = Meta.WaylandClient.new_subprocess(
           global.context,
@@ -149,6 +158,27 @@ ${e.stack}`);
     }
   }
 
+  get isWaylandSession() {
+    return this._isWaylandSession;
+  }
+
+  get hasWaylandClient() {
+    return Boolean(this._waylandClient);
+  }
+
+  markWindowMapped(window) {
+    if (!window || this._countedWindows.has(window)) return;
+    this._countedWindows.add(window);
+    if (this._launchTimer === 0 || this._waitingForWindows === 0) return;
+    const monitorIndex = window.get_monitor?.();
+    if (Number.isInteger(monitorIndex) && monitorIndex >= 0) {
+      if (this._mappedMonitorIndices.has(monitorIndex)) return;
+      this._mappedMonitorIndices.add(monitorIndex);
+    }
+    this._waitingForWindows = Math.max(0, this._waitingForWindows - 1);
+    if (this._waitingForWindows === 0) this.cancelTimer();
+  }
+
   _readOutput() {
     if (!this._dataInputStream || !this.cancellable) return;
     this._dataInputStream.read_line_async(
@@ -159,9 +189,6 @@ ${e.stack}`);
           const [output, length] = object.read_line_finish_utf8(res);
           if (length && output) {
             print(`[OmniShell-${this._processId}]: ${output}`);
-            if (output.includes("Creating desktop index")) {
-              this.cancelTimer();
-            }
           }
         } catch (e) {
           if (e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
@@ -177,29 +204,10 @@ ${e.stack}`);
   }
 
   query_window_belongs_to(window) {
-    if (!this.processRunning) return false;
+    if (!this.processRunning || !this._waylandClient ||
+        typeof this._waylandClient.owns_window !== "function") return false;
     try {
-      const title = window.get_title?.();
-      const isDingByTitle = title && (title.startsWith("Desktop Icons ") || title === "DING" || title.startsWith("DING "));
-      if (this._waylandClient && typeof this._waylandClient.owns_window === "function") {
-        const ownsWindow = this._waylandClient.owns_window(window);
-        if ((ownsWindow || isDingByTitle) && this._launchTimer !== 0 && this._waitingForWindows !== 0) {
-          this._waitingForWindows--;
-          if (this._waitingForWindows === 0) {
-            this.cancelTimer();
-          }
-        }
-        if (ownsWindow) return true;
-      }
-      if (isDingByTitle) {
-        if (this._launchTimer !== 0 && this._waitingForWindows !== 0) {
-          this._waitingForWindows--;
-          if (this._waitingForWindows === 0) {
-            this.cancelTimer();
-          }
-        }
-        return true;
-      }
+      return this._waylandClient.owns_window(window);
     } catch (error) {
       console.log(`[OmniShell] query_window_belongs_to error: ${error.message}`);
     }

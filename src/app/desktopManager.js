@@ -568,38 +568,60 @@ export var DesktopManager = class {
         this.dragItem = null;
     }
 
-    onDragDataReceived(dropInfo, xDestination, yDestination, forceMove) {
+    onDragDataReceived(dropInfo, xDestination, yDestination, forceMove, onComplete = () => {}) {
         this.onDragLeave();
-        switch (dropInfo.mimetype) {
-        case Enums.DndTargetInfo.DING_ICON_LIST:
-            {
-                if (dropInfo.filelist.length === 0)
+        const finish = (success) => onComplete(Boolean(success));
+        try {
+            switch (dropInfo.mimetype) {
+            case Enums.DndTargetInfo.DING_ICON_LIST:
+                {
+                    if (dropInfo.filelist.length === 0 || !this.dragItem) {
+                        finish(false);
+                        return;
+                    }
+                    const [xOrigin, yOrigin] = this.dragItem.getCoordinates();
+                    this.doMoveWithDragAndDrop(xOrigin, yOrigin, xDestination, yDestination);
+                    finish(true);
                     return;
-                const [xOrigin, yOrigin] = this.dragItem.getCoordinates();
-                this.doMoveWithDragAndDrop(xOrigin, yOrigin, xDestination, yDestination);
-            }
-            break;
-        case Enums.DndTargetInfo.GNOME_ICON_LIST:
-        case Enums.DndTargetInfo.URI_LIST:
-            {
-                if (dropInfo.filelist.length === 0)
+                }
+            case Enums.DndTargetInfo.GNOME_ICON_LIST:
+            case Enums.DndTargetInfo.URI_LIST:
+                {
+                    if (dropInfo.filelist.length === 0) {
+                        finish(false);
+                        return;
+                    }
+                    this.clearFileCoordinates(dropInfo.filelist, [xDestination, yDestination]);
+                    const callback = (_result, error) => finish(!error);
+                    if (forceMove) {
+                        DBusUtils.RemoteFileOperations.MoveURIsRemote(
+                            dropInfo.filelist,
+                            DesktopIconsUtil.getDesktopDir().get_uri(),
+                            callback
+                        );
+                    } else {
+                        DBusUtils.RemoteFileOperations.CopyURIsRemote(
+                            dropInfo.filelist,
+                            DesktopIconsUtil.getDesktopDir().get_uri(),
+                            callback
+                        );
+                    }
                     return;
-                this.clearFileCoordinates(dropInfo.filelist, [xDestination, yDestination]);
-                const data = Gio.File.new_for_uri(dropInfo.filelist[0]).query_info('id::filesystem', Gio.FileQueryInfoFlags.NONE, null);
-                const idFS = data.get_attribute_string('id::filesystem');
-                if ((this.desktopFsId === idFS) || forceMove)
-                    DBusUtils.RemoteFileOperations.MoveURIsRemote(dropInfo.filelist, DesktopIconsUtil.getDesktopDir().get_uri());
-                else
-                    DBusUtils.RemoteFileOperations.CopyURIsRemote(dropInfo.filelist, DesktopIconsUtil.getDesktopDir().get_uri());
+                }
+            case Enums.DndTargetInfo.TEXT_PLAIN:
+            case Enums.DndTargetInfo.TEXT_PLAIN_UTF8:
+                {
+                    this.detectURLorText(dropInfo.data, [xDestination, yDestination]);
+                    finish(true);
+                    return;
+                }
+            default:
+                finish(false);
+                return;
             }
-            break;
-        case Enums.DndTargetInfo.TEXT_PLAIN:
-        case Enums.DndTargetInfo.TEXT_PLAIN_UTF8:
-            {
-                const dropCoordinates = [xDestination, yDestination];
-                this.detectURLorText(dropInfo.data, dropCoordinates);
-            }
-            break;
+        } catch (error) {
+            print(`Error: ${error}\n`);
+            finish(false);
         }
     }
 
@@ -609,11 +631,13 @@ export var DesktopManager = class {
          * @param {string} str
          */
         function isValidURL(str) {
-            const [ok, scheme] = GLib.Uri.split(str, 0);
-            if (['http', 'https', 'ftp', 'rtsp', 'mms'].includes(scheme.toLowerCase()))
-                return ok;
-            else
+            try {
+                const [ok, scheme] = GLib.Uri.split(str, 0);
+                return Boolean(ok && typeof scheme === 'string' &&
+                    ['http', 'https', 'ftp', 'rtsp', 'mms'].includes(scheme.toLowerCase()));
+            } catch {
                 return false;
+            }
         }
         const text = fileList.toString();
         if (isValidURL(text)) {

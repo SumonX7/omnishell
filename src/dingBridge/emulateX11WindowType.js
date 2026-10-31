@@ -210,14 +210,13 @@ class EmulateX11WindowType {
   /**
    * Whether this window belongs to the bundled DING process.
    *
-   * On Wayland the spawned client can be asked directly. On X11 there is no
-   * `Meta.WaylandClient`, so the GTK application id is used: it is set by the
-   * DING process itself and cannot be spoofed by a window title.
+   * When a Wayland client handle exists, require Mutter to confirm ownership.
+   * Otherwise use DING's GTK application id or X11 WM class. Window titles
+   * are user-controlled and are never used as an identity check.
    */
   _isDingWindow(window) {
-    if (this._waylandClient && this._waylandClient.query_window_belongs_to(window)) {
-      return true;
-    }
+    if (this._waylandClient?.hasWaylandClient)
+      return this._waylandClient.query_window_belongs_to(window);
     try {
       const gtkId = window.get_gtk_application_id?.();
       if (gtkId && DING_APPLICATION_IDS.has(gtkId)) {
@@ -296,7 +295,7 @@ class EmulateX11WindowType {
 
   addWindow(window) {
     if (isManagedWindow(window)) return;
-    this._waylandClient?.cancelTimer?.();
+    this._waylandClient?.markWindowMapped?.(window);
     const manageWindow = new ManageWindow(window, this._waylandClient, this);
     setManagedWindow(window, manageWindow);
     this._windowList.push(window);

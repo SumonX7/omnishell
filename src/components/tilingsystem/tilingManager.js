@@ -1,4 +1,4 @@
-import { Clutter, Meta, GLib } from "../../gi/ext.js";
+import { Clutter, Meta, GLib, St } from "../../gi/ext.js";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import { logger } from "../../utils/logger.js";
 import {
@@ -223,7 +223,8 @@ class TilingManager {
     this._monitor = monitor;
     this._signals = new SignalHandling();
     this._placer = new WindowPlacer(gjsPlacerClock, {
-      monitorIndex: monitor.index
+      monitorIndex: monitor.index,
+      animationMs: Settings.DYNAMIC_TILING_ANIMATION_TIME
     });
     this._reflow = new ReflowScheduler(() => this._queueDynamicReflow());
     this._debug = logger(`TilingManager ${monitor.index}`);
@@ -379,6 +380,7 @@ class TilingManager {
       "unminimize",
       (_wm, window) => {
         if (!window || !this._dynamicWindowSignals.has(window)) return;
+        this._enforceDynamicWindowLimit();
         this._invalidateManagedWindows();
         this._queueDynamicReflow();
       }
@@ -386,8 +388,25 @@ class TilingManager {
     this._signals.connect(
       Settings,
       Settings.KEY_ENABLE_DYNAMIC_TILING,
-      () => this._adoptOpenWindows()
+      () => {
+        if (Settings.ENABLE_DYNAMIC_TILING) this.refreshDynamicTiling();
+      }
     );
+    this._signals.connect(Settings, Settings.KEY_DYNAMIC_PLACEMENT_POLICY, () => {
+      this._dynamicArrangements.clear();
+      this._invalidateDynamicSlots();
+      this._queueDynamicReflow();
+    });
+    this._signals.connect(Settings, Settings.KEY_MAX_DYNAMIC_WINDOWS_PER_MONITOR, () => {
+      if (!Settings.ENABLE_DYNAMIC_TILING) return;
+      this._enforceDynamicWindowLimit();
+      this._invalidateManagedWindows();
+      this._invalidateDynamicSlots();
+      this._queueDynamicReflow();
+    });
+    this._signals.connect(Settings, Settings.KEY_DYNAMIC_TILING_ANIMATION_TIME, () => {
+      this._placer.setAnimationDuration(Settings.DYNAMIC_TILING_ANIMATION_TIME);
+    });
     this._adoptOpenWindows();
     this._signals.connect(
       global.workspaceManager,
@@ -1329,7 +1348,8 @@ class TilingManager {
     // folded into one key so that a hit means "nothing that matters
     // changed" and the (expensive) recomputation can be skipped.
     const layoutId = this.getCurrentDynamicLayoutId(ws) ?? "";
-    const focused = this._splitTarget && windows.includes(this._splitTarget) ? this._splitTarget : null;
+    const focused = Settings.DYNAMIC_PLACEMENT_POLICY === "focused" &&
+      this._splitTarget && windows.includes(this._splitTarget) ? this._splitTarget : null;
     const key = this._dynamicSlotsKey(ws, windows, tree, focused, layoutId);
     const cached = this._dynamicSlotsCache.get(ws);
     if (cached && cached.key === key) {
@@ -1363,6 +1383,7 @@ class TilingManager {
       key += String(this._windowId(windows[i]));
     }
     key += "," + (focused ? String(this._windowId(focused)) : "-");
+    key += "," + Settings.DYNAMIC_PLACEMENT_POLICY;
     key += "," + layoutId;
     key += "," + String(this._dynamicTreeRevision(ws));
     key += "," + this._pinRevision();
@@ -1457,7 +1478,8 @@ class TilingManager {
       const order = slotOrder(rects);
       return order.map((slotIndex) => rects[slotIndex]);
     }
-    const focused = this._splitTarget && windows.includes(this._splitTarget) ? this._splitTarget : void 0;
+    const focused = Settings.DYNAMIC_PLACEMENT_POLICY === "focused" &&
+      this._splitTarget && windows.includes(this._splitTarget) ? this._splitTarget : void 0;
     const layoutId = this.getCurrentDynamicLayoutId(ws) ?? "";
     const previous = this._dynamicArrangements.get(ws);
     let arrangement = null;
@@ -1591,7 +1613,7 @@ class TilingManager {
     return true;
   }
 
-  _easeWindowRectFromTile(tile, window, skipAnimation = false) {
+  _easeWindowRectFromTile(tile, window, skipAnimation = false, animate = false) {
     if (!window || isDesktopWindow(window)) return;
     const currentWs = window.get_workspace?.() ?? global.workspaceManager.get_active_workspace();
     const tilingLayout = this._workspaceTilingLayout.get(currentWs);
@@ -1620,9 +1642,19 @@ class TilingManager {
       this._workArea
     );
     this._placer.place(placementTargetFor(window), toRect(destinationRect), {
-      animate: !skipAnimation,
+      animate: animate && !skipAnimation && Settings.DYNAMIC_TILING_ANIMATION_TIME > 0 && this._animationsEnabled(),
       onSettled: (requested, actual, final) => this._onPlacementSettled(window, requested, actual, final)
     });
+  }
+
+  _animationsEnabled() {
+    try {
+      const settings = St.Settings.get?.() ?? St.Settings.get_default?.();
+      if (settings?.get_reduced_motion?.()) return false;
+      if (settings?.get_enable_animations?.() === false) return false;
+    } catch {
+    }
+    return true;
   }
 
   /**
@@ -2074,7 +2106,12 @@ class TilingManager {
    * master slot.
    */
   _adoptOpenWindows() {
-    if (!Settings.ENABLE_DYNAMIC_TILING) return;
+    this.refreshDynamicTiling();
+  }
+
+  refreshDynamicTiling() {
+    if (!Settings.ENABLE_DYNAMIC_TILING) return false;
+    if (this._destroyed) return false;
     const byWorkspace = [];
     for (let i = 0; i < global.workspaceManager.get_n_workspaces(); i++) {
       const ws = global.workspaceManager.get_workspace_by_index(i);
@@ -2083,11 +2120,16 @@ class TilingManager {
     const inCreationOrder = [...new Set(byWorkspace)].sort(
       (a, b) => a.get_stable_sequence() - b.get_stable_sequence()
     );
-    let adopted = false;
     inCreationOrder.forEach((window) => {
-      if (this._trackDynamicWindow(window)) adopted = true;
+      this._trackDynamicWindow(window);
     });
-    if (adopted) this._queueDynamicReflow();
+    this._enforceDynamicWindowLimit();
+    this._dynamicArrangements.clear();
+    this._dynamicNewcomers.clear();
+    this._invalidateManagedWindows();
+    this._invalidateDynamicSlots();
+    this._queueDynamicReflow();
+    return true;
   }
 
   /**
@@ -2377,11 +2419,42 @@ class TilingManager {
       const winMonitor = typeof w.get_monitor === "function" ? w.get_monitor() : -1;
       return winMonitor >= 0 ? winMonitor === this._monitor.index : isPrimaryManager;
     });
+    const limit = Settings.MAX_DYNAMIC_WINDOWS_PER_MONITOR;
+    const placeableWindows = limit > 0 ? windows.slice(0, limit) : windows;
+    if (limit > 0)
+      windows.slice(limit).forEach((window) => this._dynamicNewcomers.delete(window));
     this._dynamicManagedCache.set(ws, {
-      windows,
+      windows: placeableWindows,
       revision: this._managedRevision
     });
-    return windows;
+    return placeableWindows;
+  }
+
+  _enforceDynamicWindowLimit() {
+    const limit = Settings.MAX_DYNAMIC_WINDOWS_PER_MONITOR;
+    if (limit === 0) return;
+    const byWorkspace = new Map();
+    for (const window of this._dynamicWindows) {
+      if (!this._isDynamicEligible(window)) continue;
+      const ws = window.get_workspace?.() ?? global.workspaceManager.get_active_workspace();
+      if (!ws) continue;
+      if (!byWorkspace.has(ws)) byWorkspace.set(ws, []);
+      byWorkspace.get(ws).push(window);
+    }
+    for (const windows of byWorkspace.values()) {
+      for (const window of windows.slice(limit)) {
+        if (!window.assignedTile) continue;
+        const originalSize = window.originalSize;
+        delete window.assignedTile;
+        this._placer.forget(placementTargetFor(window));
+        this._pinnedWindows.delete(window);
+        this._pinSettleBudget.delete(window);
+        if (Settings.RESTORE_WINDOW_ORIGINAL_SIZE && originalSize)
+          this._easeWindowRect(window, originalSize, false, false);
+        window.originalSize = void 0;
+      }
+    }
+    this._invalidatePins();
   }
 
   _tileOf(rect) {
@@ -2472,7 +2545,7 @@ class TilingManager {
         const rect = rects[slot];
         if (!rect) return;
         try {
-          this._easeWindowRectFromTile(this._tileOf(rect), window);
+          this._easeWindowRectFromTile(this._tileOf(rect), window, false, true);
         } catch (err) {
           this._debug(`Failed to ease window into slot ${slot}:`, err);
         }

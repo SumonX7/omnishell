@@ -109,7 +109,7 @@ export function processFileList(mimetype, data) {
             retval.action = 'copy';
             uriFiles.forEach(file => {
                 const file2 = file.replace('\r', '').trim();
-                if (file2 !== '')
+                if (file2 !== '' && !file2.startsWith('#'))
                     retval.files.push(file2);
             });
         }
@@ -213,12 +213,21 @@ export function loadDragData({fileList, specialFilesSelected}) {
  * @param {Gdk.Drop} drop
  */
 export async function manageIconDrop(fileItem, drop) {
-    let gdkDropAction = drop.get_actions();
-    if (!Gdk.DragAction.is_unique(gdkDropAction)) {
-        if (((gdkDropAction & Gdk.DragAction.COPY) !== 0) && ((gdkDropAction & Gdk.DragAction.MOVE) !== 0))
-            gdkDropAction = Gdk.DragAction.ASK;
-    }
-    const gdkReturnAction = Gdk.DragAction.COPY;
+    const allowedActions = drop.get_actions() & (Gdk.DragAction.COPY | Gdk.DragAction.MOVE);
+    const selectedAction = drop.get_drag?.()?.get_selected_action?.() ?? Gdk.DragAction.NONE;
+    let gdkDropAction = Gdk.DragAction.NONE;
+    if (fileItem?.trustedDesktopFile && (allowedActions & Gdk.DragAction.COPY))
+        gdkDropAction = Gdk.DragAction.COPY;
+    else if ((selectedAction & Gdk.DragAction.MOVE) && (allowedActions & Gdk.DragAction.MOVE))
+        gdkDropAction = Gdk.DragAction.MOVE;
+    else if ((selectedAction & Gdk.DragAction.COPY) && (allowedActions & Gdk.DragAction.COPY))
+        gdkDropAction = Gdk.DragAction.COPY;
+    else if (allowedActions & Gdk.DragAction.MOVE)
+        gdkDropAction = Gdk.DragAction.MOVE;
+    else if (allowedActions & Gdk.DragAction.COPY)
+        gdkDropAction = Gdk.DragAction.COPY;
+    if (gdkDropAction === Gdk.DragAction.NONE)
+        return null;
 
     try {
         const [dropData, mimetype] = await drop.read_async_promise(Enums.MIME_TYPES, GLib.PRIORITY_DEFAULT, null);
@@ -231,13 +240,14 @@ export async function manageIconDrop(fileItem, drop) {
         case Enums.DndTargetInfo.DING_ICON_LIST:
         case Enums.DndTargetInfo.URI_LIST:
             for (const item of decodedData.split('\n')) {
-                if (item !== '')
-                    fileList.push(item.replace('\r', ''));
+                const uri = item.replace('\r', '').trim();
+                if (uri !== '' && !uri.startsWith('#'))
+                    fileList.push(uri);
             }
             break;
         case Enums.DndTargetInfo.GNOME_ICON_LIST:
             for (const item of decodedData.split('\n')) {
-                const item2 = item.split('\r')[0];
+                const item2 = item.split('\r')[0].trim();
                 if (item2 !== '')
                     fileList.push(item2);
             }
@@ -249,7 +259,10 @@ export async function manageIconDrop(fileItem, drop) {
             console.log(`Unknown mime type for DnD: ${mimetype}`);
             break;
         }
-        drop.finish(gdkReturnAction);
+        if ((mimetype === Enums.DndTargetInfo.DING_ICON_LIST ||
+            mimetype === Enums.DndTargetInfo.URI_LIST ||
+            mimetype === Enums.DndTargetInfo.GNOME_ICON_LIST) && fileList.length === 0)
+            return null;
         return {
             'action': gdkDropAction,
             mimetype,
@@ -258,7 +271,6 @@ export async function manageIconDrop(fileItem, drop) {
         };
     } catch (e) {
         console.error(e);
-        drop.finish(0);
     }
     return null;
 }

@@ -119,6 +119,9 @@ class Settings {
   static KEY_ENABLE_MOVE_KEYBINDINGS = "enable-move-keybindings";
   static KEY_ENABLE_AUTO_TILING = "enable-autotiling";
   static KEY_ENABLE_DYNAMIC_TILING = "enable-dynamic-tiling";
+  static KEY_DYNAMIC_PLACEMENT_POLICY = "dynamic-placement-policy";
+  static KEY_MAX_DYNAMIC_WINDOWS_PER_MONITOR = "max-dynamic-windows-per-monitor";
+  static KEY_DYNAMIC_TILING_ANIMATION_TIME = "dynamic-tiling-animation-time";
   static KEY_RAISE_TOGETHER = "raise-together";
   static KEY_ACTIVE_SCREEN_EDGES = "active-screen-edges";
   static KEY_TOP_EDGE_MAXIMIZE = "top-edge-maximize";
@@ -396,6 +399,34 @@ class Settings {
 
   static set ENABLE_DYNAMIC_TILING(val) {
     set_boolean(Settings.KEY_ENABLE_DYNAMIC_TILING, val);
+  }
+
+  static get DYNAMIC_PLACEMENT_POLICY() {
+    const value = get_string(Settings.KEY_DYNAMIC_PLACEMENT_POLICY);
+    return value === "largest" ? "largest" : "focused";
+  }
+
+  static set DYNAMIC_PLACEMENT_POLICY(val) {
+    set_string(Settings.KEY_DYNAMIC_PLACEMENT_POLICY, val === "largest" ? "largest" : "focused");
+  }
+
+  static get MAX_DYNAMIC_WINDOWS_PER_MONITOR() {
+    return get_unsigned_number(Settings.KEY_MAX_DYNAMIC_WINDOWS_PER_MONITOR);
+  }
+
+  static set MAX_DYNAMIC_WINDOWS_PER_MONITOR(val) {
+    set_unsigned_number(
+      Settings.KEY_MAX_DYNAMIC_WINDOWS_PER_MONITOR,
+      Number.isFinite(val) ? Math.max(0, Math.min(20, Math.round(val))) : 0
+    );
+  }
+
+  static get DYNAMIC_TILING_ANIMATION_TIME() {
+    return get_unsigned_number(Settings.KEY_DYNAMIC_TILING_ANIMATION_TIME);
+  }
+
+  static set DYNAMIC_TILING_ANIMATION_TIME(val) {
+    set_unsigned_number(Settings.KEY_DYNAMIC_TILING_ANIMATION_TIME, val);
   }
 
   static get RAISE_TOGETHER() {

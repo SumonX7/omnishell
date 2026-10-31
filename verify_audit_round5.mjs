@@ -34,7 +34,7 @@ console.log("=== Round-5 Audit Verification (D1 to D9 & Re-checks) ===");
 {
   const visibleAreaContent = fs.readFileSync("src/dingBridge/visibleArea.js", "utf8");
   assert(
-    visibleAreaContent.includes("for (const monitorKey in margins)"),
+    visibleAreaContent.includes("monitorKey") && !visibleAreaContent.includes("for (const workspace in margins)"),
     "D2: visibleArea.js must iterate monitor keys, not workspace"
   );
   assert(

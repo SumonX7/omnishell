@@ -35,6 +35,11 @@ class WindowPlacer {
   _opts;
   _history = /* @__PURE__ */ new WeakMap();
   _inFlight = /* @__PURE__ */ new Set();
+  setAnimationDuration(durationMs) {
+    this._opts.animationMs = Number.isFinite(durationMs)
+      ? Math.max(0, Math.min(2e3, Math.round(durationMs)))
+      : 0;
+  }
   place(target, dest, options = {}) {
     if (!target.isAlive()) return "skipped-dead";
     const hist = this._historyOf(target);

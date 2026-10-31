@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="gnome-shell-extensions">
+<schemalist gettext-domain="tilingshell">
 
     <schema path="/org/gnome/shell/extensions/tilingshell/" id="org.gnome.shell.extensions.tilingshell">
         <key name="last-version-name-installed" type="s">
@@ -116,6 +116,21 @@
             <default>true</default>
             <summary>Enable dynamic tiling</summary>
             <description>Windows always fill the screen, following the proportions of the selected layout. A single window is fullscreen; opening another splits the space; closing one gives it back.</description>
+        </key>
+        <key name="dynamic-placement-policy" type="s">
+            <default>'focused'</default>
+            <summary>Dynamic placement policy</summary>
+            <description>Split the focused window or the largest tile when dynamic tiling needs another slot.</description>
+        </key>
+        <key name="max-dynamic-windows-per-monitor" type="u">
+            <default>0</default>
+            <summary>Maximum dynamic windows per monitor</summary>
+            <description>Leave additional windows floating on each monitor. Zero means unlimited.</description>
+        </key>
+        <key name="dynamic-tiling-animation-time" type="u">
+            <default>120</default>
+            <summary>Dynamic tiling animation time (milliseconds)</summary>
+            <description>Duration of completed dynamic reflows. Zero disables this animation.</description>
         </key>
         <key name="raise-together" type="b">
             <default>false</default>

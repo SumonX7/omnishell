@@ -44,7 +44,7 @@ import { WindowBorderManager } from "./components/windowBorder/windowBorderManag
 import TilingShellWindowManager from "./components/windowManager/tilingShellWindowManager.js";
 import OverriddenAltTab from "./components/altTab/overriddenAltTab.js";
 import { LayoutSwitcherPopup } from "./components/layoutSwitcher/layoutSwitcher.js";
-import { unmaximizeWindow, skipNextEffect } from "./utils/gnomesupport.js";
+import { unmaximizeWindow, skipNextEffect, isShellStartingUp } from "./utils/gnomesupport.js";
 import * as Config from "resource:///org/gnome/shell/misc/config.js";
 import { RaiseTogetherManager } from "./components/raiseTogether/raiseTogetherManager.js";
 import { DingBridge } from "./dingBridge/dingBridge.js";
@@ -131,18 +131,18 @@ class TilingShellExtension extends Extension {
 
     if (!applied.has("17.3-cycle-layouts-backward")) {
       debug("apply compatibility changes: 17.3 cycle-layouts-backward");
-      const cycleLayouts = Settings.gioSetting.get_strv(
-        Settings.SETTING_CYCLE_LAYOUTS
-      ) || [];
-      // Each shortcut gets its own "<Shift>" variant; the old code
-      // stringified the whole array, producing "['','']" in the shortcut.
-      const backward = cycleLayouts.map((shortcut) =>
-        shortcut.startsWith("<Shift>") ? shortcut : `<Shift>${shortcut}`
-      );
-      Settings.gioSetting.set_strv(
-        Settings.SETTING_CYCLE_LAYOUTS_BACKWARD,
-        backward
-      );
+      const backwardKey = Settings.SETTING_CYCLE_LAYOUTS_BACKWARD;
+      const backwardHasUserValue = Settings.gioSetting.get_user_value(backwardKey) !== null;
+      if (!backwardHasUserValue) {
+        const cycleLayouts = Settings.gioSetting.get_strv(
+          Settings.SETTING_CYCLE_LAYOUTS
+        ) || [];
+        const backward = cycleLayouts.filter(Boolean).map((shortcut) =>
+          shortcut.startsWith("<Shift>") ? shortcut : `<Shift>${shortcut}`
+        );
+        if (backward.length > 0)
+          Settings.gioSetting.set_strv(backwardKey, backward);
+      }
       applied.add("17.3-cycle-layouts-backward");
     }
 
@@ -206,7 +206,7 @@ class TilingShellExtension extends Extension {
         new GLib.Variant("b", false)
       );
     }
-    if (Main.layoutManager._startingUp) {
+    if (isShellStartingUp(Main.layoutManager)) {
       this._signals.connect(
         Main.layoutManager,
         "startup-complete",
@@ -331,6 +331,10 @@ class TilingShellExtension extends Extension {
           tm.workArea = Main.layoutManager.getWorkAreaForMonitor(index);
         });
       }
+    });
+    this._signals.connect(Main.layoutManager, "monitors-changed", () => {
+      GlobalState.get().validate_selected_layouts();
+      this._createTilingManagers();
     });
     this._signals.connect(
       this._mutterSettings,
