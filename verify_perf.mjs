@@ -54,7 +54,7 @@ const check = (id, description, ok, evidence) => {
 // ---------------------------------------------------------------------------
 {
   const s = read('components/tilingsystem/tilingManager.js');
-  const keyBlock = /_dynamicSlotsKey\(ws, windows, tree, focused, layoutId\) \{[\s\S]{0,2000}?\n  \}/.exec(s)?.[0] ?? '';
+  const keyBlock = /_dynamicSlotsKey\(ws, windows, tree, focused, layoutId[^)]*\) \{[\s\S]*?\n  \}/.exec(s)?.[0] ?? '';
 
   const windows = /this\._windowId\(windows\[i\]\)/.test(keyBlock);
   const focused = /focused \? String\(this\._windowId\(focused\)\)/.test(keyBlock);
@@ -266,7 +266,7 @@ const check = (id, description, ok, evidence) => {
 // ---------------------------------------------------------------------------
 {
   const s = read('components/tilingsystem/tilingManager.js');
-  const addBlock = /_dynamicAdd\(window\) \{[\s\S]{0,2200}?\n  \}/.exec(s)?.[0] ?? '';
+  const addBlock = /_dynamicAdd\(window\) \{[\s\S]*?\n  _hideStrictWindow/.exec(s)?.[0] ?? /_dynamicAdd\(window\) \{[\s\S]{0,6000}?\n  \}/.exec(s)?.[0] ?? '';
   const queued = /this\._queueDynamicReflow\(\)/.test(addBlock);
   const directCalls = (s.match(/this\._applyDynamicTiling\(\)/g) || []).length;
   check('P4-BATCH', 'new windows are batched through the idle reflow queue',
@@ -279,7 +279,7 @@ const check = (id, description, ok, evidence) => {
 // ---------------------------------------------------------------------------
 {
   const s = read('components/tilingsystem/tilingManager.js');
-  const keyBlock = /_dynamicSlotsKey\(ws, windows, tree, focused, layoutId\) \{[\s\S]{0,2000}?\n  \}/.exec(s)?.[0] ?? '';
+  const keyBlock = /_dynamicSlotsKey\(ws, windows, tree, focused, layoutId[^)]*\) \{[\s\S]*?\n  \}/.exec(s)?.[0] ?? '';
   const cached = /String\(this\._innerGapValue\)/.test(keyBlock) &&
     /String\(this\._outerGapValue\)/.test(keyBlock);
   const noSettingsRead = !/Settings\.(INNER_GAPS|OUTER_GAPS)/.test(keyBlock);

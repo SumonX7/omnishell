@@ -94,13 +94,15 @@ export var AskRenamePopup = class extends SignalManager.SignalManager {
     updateFileItem(fileItem) {
         this._fileItem = fileItem;
         if (fileItem) {
-            this._popover.set_relative_to(this._fileItem._iconContainer);
-            this._popover.modal = true;
+            const parent = this._popover.get_parent();
+            if (parent !== fileItem.container) {
+                if (parent) this._popover.unparent();
+                this._popover.set_parent(fileItem.container);
+            }
             this._textArea.set_position(this._cursorPosition);
         } else {
             this._cursorPosition = this._textArea.get_position();
-            this._popover.modal = false;
-            this._popover.set_relative_to(null);
+            if (this._popover.get_parent()) this._popover.unparent();
         }
     }
 

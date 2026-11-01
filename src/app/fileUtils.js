@@ -35,7 +35,7 @@ const DEFAULT_QUERY_ATTRIBUTES = [
 export async function enumerateDir(dir, cancellable = null, priority = GLib.PRIORITY_DEFAULT,
     queryAttributes = DEFAULT_QUERY_ATTRIBUTES) {
     const childrenEnumerator = await dir.enumerate_children_async_promise(queryAttributes,
-        Gio.FileQueryInfoFlags.NONE, priority, cancellable);
+        Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, priority, cancellable);
 
     try {
         const children = [];
@@ -68,6 +68,15 @@ export async function enumerateDir(dir, cancellable = null, priority = GLib.PRIO
  */
 export async function recursivelyDeleteDir(dir, deleteParent, cancellable = null,
     priority = GLib.PRIORITY_DEFAULT) {
+    // Never recurse through a directory symlink passed as the root. Child
+    // enumeration also uses NOFOLLOW_SYMLINKS, so links encountered below
+    // are unlinked as entries instead of traversing their targets.
+    const rootInfo = await dir.query_info_async_promise(
+        Gio.FILE_ATTRIBUTE_STANDARD_TYPE, Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
+        priority, cancellable);
+    if (rootInfo.get_file_type() !== Gio.FileType.DIRECTORY)
+        throw new GLib.Error(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_DIRECTORY,
+            `${dir.get_path()} is not a directory`);
     const children = await enumerateDir(dir, cancellable, priority);
     /* eslint-disable no-await-in-loop */
     for (const info of children)
@@ -89,7 +98,7 @@ export async function deleteFile(file, info = null, cancellable = null,
     priority = GLib.PRIORITY_DEFAULT) {
     if (!info) {
         info = await file.query_info_async_promise(
-            Gio.FILE_ATTRIBUTE_STANDARD_TYPE, Gio.FileQueryInfoFlags.NONE,
+            Gio.FILE_ATTRIBUTE_STANDARD_TYPE, Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS,
             priority, cancellable);
     }
 

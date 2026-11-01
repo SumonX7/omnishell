@@ -100,7 +100,7 @@ class DingBridge {
   }
 
   _startDesktopSystem() {
-    if (this._isEnabled) return;
+    if (this._isEnabled || this._startupPreparedId !== null) return;
     if (!this._x11Manager) {
       this._x11Manager = new EmulateX11WindowType();
       this._x11Manager.onWindowAdopted = (window) => {

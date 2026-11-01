@@ -186,7 +186,7 @@ const _Slider = class _Slider extends St.Button {
   }
 
   vfunc_button_release_event() {
-    if (this._dragging) return this._endDragging();
+    if (this._dragging) return this._endDragging(true);
     return Clutter.EVENT_PROPAGATE;
   }
 
@@ -209,7 +209,8 @@ const _Slider = class _Slider extends St.Button {
     return Clutter.EVENT_STOP;
   }
 
-  _endDragging() {
+  _endDragging(emitSlideEnd = false) {
+    const wasDragging = this._dragging;
     if (this._dragging) {
       if (this._grab) {
         this._grab.dismiss();
@@ -221,6 +222,7 @@ const _Slider = class _Slider extends St.Button {
     try {
       global.display?.set_cursor?.(this.preferredCursor);
     } catch {}
+    if (emitSlideEnd && wasDragging) this.emit("slide-end");
     return Clutter.EVENT_STOP;
   }
 
@@ -267,6 +269,9 @@ registerGObjectClass(_Slider, {
     slide: {
       param_types: [GObject.TYPE_INT]
       // movement
+    },
+    "slide-end": {
+      param_types: []
     }
   },
   GTypeName: "Slider"

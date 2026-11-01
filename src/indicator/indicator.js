@@ -69,6 +69,15 @@ const _Indicator = class _Indicator extends PanelMenu.Button {
     return refreshed;
   }
 
+  getDynamicTilingDiagnostics() {
+    const monitors = [];
+    for (let index = 0; index < Main.layoutManager.monitors.length; index++) {
+      const diagnostics = this.getTilingManager(index)?.getDynamicTilingDiagnostics();
+      if (diagnostics) monitors.push(diagnostics);
+    }
+    return {formatVersion: 1, monitors};
+  }
+
   set enableScaling(value) {
     if (this._enableScaling === value) return;
     this._enableScaling = value;

@@ -396,6 +396,16 @@ class TilingShellExtension extends Extension {
       );
       this._signals.connect(
         this._keybindings,
+        "resize-dynamic-split",
+        (kb, dp, direction) => {
+          const window = dp.focus_window;
+          if (!window) return;
+          const manager = this._tilingManagers[window.get_monitor()];
+          manager?.resizeDynamicSplit(direction);
+        }
+      );
+      this._signals.connect(
+        this._keybindings,
         "untile-window",
         this._onKeyboardUntileWindow.bind(this)
       );

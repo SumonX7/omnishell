@@ -60,6 +60,51 @@ const DYNAMIC_DIRECTION = {
   [KeyBindingsDirection.DOWN]: "down"
 };
 
+function dynamicTreeBounds(tree) {
+  if (tree.kind === "leaf") return tree.tile;
+  const first = dynamicTreeBounds(tree.first);
+  const second = dynamicTreeBounds(tree.second);
+  const x = Math.min(first.x, second.x);
+  const y = Math.min(first.y, second.y);
+  return {
+    x,
+    y,
+    width: Math.max(first.x + first.width, second.x + second.width) - x,
+    height: Math.max(first.y + first.height, second.y + second.height) - y
+  };
+}
+
+function applyDynamicRatios(tree, ratios, path = [], boundsOverride = null) {
+  if (!tree) return null;
+  if (tree.kind === "leaf")
+    return {kind: "leaf", tile: boundsOverride ?? tree.tile};
+  const bounds = boundsOverride ?? dynamicTreeBounds(tree);
+  const key = path.join(".") || "root";
+  const ratio = Number(ratios?.[key]);
+  const axisStart = tree.axis === "x" ? bounds.x : bounds.y;
+  const axisExtent = tree.axis === "x" ? bounds.width : bounds.height;
+  const at = Number.isFinite(ratio) && ratio >= 0.1 && ratio <= 0.9
+    ? axisStart + axisExtent * ratio : tree.at;
+  const firstBounds = {...bounds};
+  const secondBounds = {...bounds};
+  if (tree.axis === "x") {
+    firstBounds.width = at - bounds.x;
+    secondBounds.x = at;
+    secondBounds.width = bounds.x + bounds.width - at;
+  } else {
+    firstBounds.height = at - bounds.y;
+    secondBounds.y = at;
+    secondBounds.height = bounds.y + bounds.height - at;
+  }
+  return {
+    kind: "split",
+    axis: tree.axis,
+    at,
+    first: applyDynamicRatios(tree.first, ratios, [...path, "first"], firstBounds),
+    second: applyDynamicRatios(tree.second, ratios, [...path, "second"], secondBounds)
+  };
+}
+
 class SnapAssistingInfo {
   _snapAssistantLayoutId;
   constructor() {
@@ -184,6 +229,7 @@ class TilingManager {
   // the window settles at the size that was asked for.
   _pinSettleBudget = /* @__PURE__ */ new Map();
   _dynamicIdleSources = /* @__PURE__ */ new Set();
+  _autoTileReservations = /* @__PURE__ */ new Map();
   // Set to true in destroy() so that idle callbacks that fire after
   // teardown know they must not touch any manager state.
   _destroyed = false;
@@ -206,6 +252,19 @@ class TilingManager {
       }
       if (this._destroyed) return GLib.SOURCE_REMOVE;
       return cb();
+    });
+    this._dynamicIdleSources.add(sourceId);
+    return sourceId;
+  }
+
+  _addDynamicTimeout(intervalMs, cb) {
+    if (this._destroyed) return null;
+    let sourceId = null;
+    sourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, intervalMs, () => {
+      const result = cb();
+      if (result === GLib.SOURCE_REMOVE && sourceId !== null)
+        this._dynamicIdleSources.delete(sourceId);
+      return result;
     });
     this._dynamicIdleSources.add(sourceId);
     return sourceId;
@@ -354,9 +413,11 @@ class TilingManager {
     // per-window answer is memoised, so it has to be thrown away here.
     this._signals.connect(Settings, Settings.KEY_TILING_EXCLUDED_APPS, () => {
       this._excludedAppsCache = /* @__PURE__ */ new WeakMap();
-      this._invalidateManagedWindows();
-      this._invalidateDynamicSlots();
-      this._queueDynamicReflow();
+      this._reconcileDynamicEligibility();
+    });
+    this._signals.connect(Settings, Settings.KEY_DYNAMIC_APP_RULES, () => {
+      this._excludedAppsCache = /* @__PURE__ */ new WeakMap();
+      this._reconcileDynamicEligibility();
     });
     this._signals.connect(
       this._snapAssist,
@@ -366,7 +427,8 @@ class TilingManager {
     this._signals.connect(
       global.windowManager,
       "minimize",
-      (_wm, window) => {
+      (_wm, actor) => {
+        const window = actor?.metaWindow ?? actor;
         // Only the manager that tracks this window needs to recompute its
         // workspace. Every other manager used to reflow as well, for a
         // layout that could not contain the window.
@@ -378,13 +440,19 @@ class TilingManager {
     this._signals.connect(
       global.windowManager,
       "unminimize",
-      (_wm, window) => {
+      (_wm, actor) => {
+        const window = actor?.metaWindow ?? actor;
         if (!window || !this._dynamicWindowSignals.has(window)) return;
         this._enforceDynamicWindowLimit();
         this._invalidateManagedWindows();
         this._queueDynamicReflow();
       }
     );
+    this._signals.connect(global.display, "grab-op-end", (_display, window, grabOp) => {
+      const resizeOperation = Object.entries(Meta.GrabOp).some(([name, value]) =>
+        (name.startsWith("RESIZING_") || name.startsWith("KEYBOARD_RESIZING_")) && value === grabOp);
+      if (resizeOperation) this._persistManualSplitRatios(window);
+    });
     this._signals.connect(
       Settings,
       Settings.KEY_ENABLE_DYNAMIC_TILING,
@@ -394,6 +462,17 @@ class TilingManager {
     );
     this._signals.connect(Settings, Settings.KEY_DYNAMIC_PLACEMENT_POLICY, () => {
       this._dynamicArrangements.clear();
+      this._invalidateDynamicSlots();
+      this._queueDynamicReflow();
+    });
+    this._signals.connect(Settings, Settings.KEY_DYNAMIC_OVERFLOW_POLICY, () => {
+      this._dynamicWindows.forEach((window) => delete window.__omnishellOverflowFloating);
+      this._enforceDynamicWindowLimit();
+      this._invalidateManagedWindows();
+      this._invalidateDynamicSlots();
+      this._queueDynamicReflow();
+    });
+    this._signals.connect(Settings, Settings.KEY_DYNAMIC_SPLIT_RATIOS, () => {
       this._invalidateDynamicSlots();
       this._queueDynamicReflow();
     });
@@ -502,6 +581,7 @@ class TilingManager {
    */
   onWindowCreated(window) {
     if (isDesktopWindow(window)) return;
+    if (this._applyDynamicAppRuleTarget(window)) return;
     if (this._isExcludedFromTiling(window)) return;
     const isFileManager = window.get_wm_class() === "org.gnome.Nautilus" || window.get_gtk_application_id() === "org.gnome.Nautilus";
     const dingBridge = getDingBridge();
@@ -579,11 +659,54 @@ class TilingManager {
     // deliberate user maximize — pull it back into the layout via reflow.
     const born = window.__omnishellBornTime ?? (window.__omnishellBornTime = GLib.get_monotonic_time());
     const userDriving = (GLib.get_monotonic_time() - born) > 1.5e6;
-    if (!userDriving) return;
+    if (!userDriving) {
+      // Apps commonly restore their maximized state during map. The first
+      // placement has already been cancelled above, so put the window back
+      // through the current dynamic layout instead of waiting for an
+      // unrelated event.
+      this._queueDynamicReflow();
+      return;
+    }
     // Mark as user-maximized immediately with no grace-period timer.
     // Un-maximizing via button / Super+Down will clear the flag in
     // onWindowUnmaximized and reflow the window back into its slot.
     window.omnishellUserMaximized = true;
+  }
+
+  _dynamicRuleForWindow(window) {
+    if (!window) return null;
+    const identifiers = [];
+    try { if (window.get_wm_class?.()) identifiers.push(window.get_wm_class()); } catch {}
+    try { if (window.get_gtk_application_id?.()) identifiers.push(window.get_gtk_application_id()); } catch {}
+    const normalized = new Set(identifiers.map((id) => String(id).trim().toLowerCase()));
+    const shortNames = new Set([...normalized].map((id) => id.split(".").pop()));
+    return (Settings.DYNAMIC_APP_RULES ?? []).find((rule) => {
+      const id = rule.appId.toLowerCase();
+      return normalized.has(id) || shortNames.has(id);
+    }) ?? null;
+  }
+
+  _applyDynamicAppRuleTarget(window) {
+    const rule = this._dynamicRuleForWindow(window);
+    if (!rule) return false;
+    if (rule.action === "maximize") {
+      this.untrackWindow(window);
+      window.omnishellIntentionalMaximize = true;
+      window.omnishellUserMaximized = true;
+      try { if (window.can_maximize()) maximizeWindow(window); } catch {}
+      return true;
+    }
+    if (rule.action === "float") return false;
+    if (rule.monitor >= 0 && window.get_monitor?.() !== rule.monitor) {
+      try { window.move_to_monitor(rule.monitor); return true; } catch {}
+    }
+    if (rule.workspace >= 0) {
+      const destination = global.workspaceManager.get_workspace_by_index(rule.workspace);
+      if (destination && window.get_workspace?.() !== destination) {
+        try { window.change_workspace(destination); return true; } catch {}
+      }
+    }
+    return false;
   }
 
   onUntileWindow(window, force) {
@@ -706,7 +829,10 @@ class TilingManager {
       })
     );
     this._dynamicWindowSignals.clear();
+    for (const window of this._dynamicWindows) this._revealStrictWindow(window);
     this._dynamicWindows.length = 0;
+    for (const window of this._autoTileReservations.keys())
+      this._releaseAutoTileReservation(window);
     this._pinnedWindows.clear();
     this._pinSettleBudget.clear();
     this._dynamicManagedCache.clear();
@@ -741,6 +867,7 @@ class TilingManager {
     this._workspaceTilingLayout.forEach(
       (tl) => tl.relayout({ containerRect: this._workArea })
     );
+    this._dynamicWindows.forEach((window) => this._recoverOverflowFloatingWindow(window));
     this._snapAssist.workArea = this._workArea;
     this._edgeTilingManager.workarea = this._workArea;
     // The memoised slots depend on the work area: the pin sizes are
@@ -1348,9 +1475,12 @@ class TilingManager {
     // folded into one key so that a hit means "nothing that matters
     // changed" and the (expensive) recomputation can be skipped.
     const layoutId = this.getCurrentDynamicLayoutId(ws) ?? "";
-    const focused = Settings.DYNAMIC_PLACEMENT_POLICY === "focused" &&
+    const newestRule = [...this._dynamicNewcomers].reverse()
+      .find((window) => window.get_workspace?.() === ws);
+    const placementPolicy = this._dynamicRuleForWindow(newestRule)?.placement ?? Settings.DYNAMIC_PLACEMENT_POLICY;
+    const focused = placementPolicy === "focused" &&
       this._splitTarget && windows.includes(this._splitTarget) ? this._splitTarget : null;
-    const key = this._dynamicSlotsKey(ws, windows, tree, focused, layoutId);
+    const key = this._dynamicSlotsKey(ws, windows, tree, focused, layoutId, placementPolicy);
     const cached = this._dynamicSlotsCache.get(ws);
     if (cached && cached.key === key) {
       // A hit still has to clear the newcomer marks: they record which
@@ -1376,14 +1506,14 @@ class TilingManager {
    * assigned a small per-manager id, so that the key stays a string
    * (cheap to compare) without needing a Map.
    */
-  _dynamicSlotsKey(ws, windows, tree, focused, layoutId) {
+  _dynamicSlotsKey(ws, windows, tree, focused, layoutId, placementPolicy = Settings.DYNAMIC_PLACEMENT_POLICY) {
     let key = "";
     for (let i = 0; i < windows.length; i++) {
       if (i > 0) key += ",";
       key += String(this._windowId(windows[i]));
     }
     key += "," + (focused ? String(this._windowId(focused)) : "-");
-    key += "," + Settings.DYNAMIC_PLACEMENT_POLICY;
+    key += "," + placementPolicy;
     key += "," + layoutId;
     key += "," + String(this._dynamicTreeRevision(ws));
     key += "," + this._pinRevision();
@@ -1641,10 +1771,12 @@ class TilingManager {
       }),
       this._workArea
     );
-    this._placer.place(placementTargetFor(window), toRect(destinationRect), {
+    const placementResult = this._placer.place(placementTargetFor(window), toRect(destinationRect), {
       animate: animate && !skipAnimation && Settings.DYNAMIC_TILING_ANIMATION_TIME > 0 && this._animationsEnabled(),
       onSettled: (requested, actual, final) => this._onPlacementSettled(window, requested, actual, final)
     });
+    if (placementResult === "skipped-identical" || placementResult === "skipped-settled")
+      this._revealStrictWindow(window);
   }
 
   _animationsEnabled() {
@@ -1675,8 +1807,32 @@ class TilingManager {
    *    settles at the size that was asked for, which resets the budget.
    */
   _onPlacementSettled(window, requested, actual, final) {
+    if (final) this._revealStrictWindow(window);
     if (!final || !Settings.ENABLE_DYNAMIC_TILING) return;
     if (!this._dynamicWindowSignals.has(window)) return;
+    if ((actual.width > this._workArea.width || actual.height > this._workArea.height) &&
+        Settings.DYNAMIC_OVERFLOW_POLICY === "next-workspace") {
+      const workspace = window.get_workspace?.() ?? global.workspaceManager.get_active_workspace();
+      if (workspace && this._moveDynamicOverflowWindow(window, workspace)) {
+        this._pinnedWindows.delete(window);
+        this._pinSettleBudget.delete(window);
+        this._invalidatePins();
+        return;
+      }
+    }
+    if ((actual.width > this._workArea.width || actual.height > this._workArea.height) &&
+        Settings.DYNAMIC_OVERFLOW_POLICY === "float") {
+      window.__omnishellOverflowFloating = true;
+      delete window.assignedTile;
+      this._placer.forget(placementTargetFor(window));
+      this._pinnedWindows.delete(window);
+      this._pinSettleBudget.delete(window);
+      this._invalidatePins();
+      this._invalidateManagedWindows();
+      this._invalidateDynamicSlots();
+      this._queueDynamicReflow();
+      return;
+    }
     const pin = { ...this._pinnedWindows.get(window) ?? {} };
     const tolerance = TilingManager._PIN_TOLERANCE;
     let revised = false;
@@ -1840,6 +1996,7 @@ class TilingManager {
   _isExcludedFromTiling(window) {
     if (!window) return false;
     if (isDesktopWindow(window)) return true;
+    if (this._dynamicRuleForWindow(window)?.action === "float") return true;
     let excluded;
     try {
       excluded = Settings.TILING_EXCLUDED_APPS || [];
@@ -1871,7 +2028,9 @@ class TilingManager {
       if (!needle) return false;
       return normalized.includes(needle) || shortNames.includes(needle);
     });
-    this._excludedAppsCache.set(window, {
+    // A missing app id during initial map is not a stable negative answer.
+    // Do not memoize it; the identity notification will re-check exclusions.
+    if (identifiers.length > 0) this._excludedAppsCache.set(window, {
       list: excluded.join("\n"),
       excluded: isExcluded
     });
@@ -1934,22 +2093,10 @@ class TilingManager {
       ),
       // Under Wayland, a window's title or app id may arrive shortly after
       // creation. If it turns out to be a desktop background window, evict it immediately.
-      window.connect(
-        "notify::title",
-        () => {
-          if (isDesktopWindow(window)) {
-            this.untrackWindow(window);
-          }
-        }
-      ),
-      window.connect(
-        "notify::gtk-application-id",
-        () => {
-          if (isDesktopWindow(window)) {
-            this.untrackWindow(window);
-          }
-        }
-      )
+      window.connect("notify::title", () => this._onDynamicIdentityChanged(window)),
+      window.connect("notify::gtk-application-id", () => this._onDynamicIdentityChanged(window)),
+      window.connect("notify::wm-class", () => this._onDynamicIdentityChanged(window)),
+      window.connect("size-changed", () => this._recoverOverflowFloatingWindow(window))
       // Moving to another monitor is handled once by the extension's
       // "window-entered-monitor" dispatcher, which releases the window from
       // the old manager and adopts it into the new one. Polling the monitor
@@ -1959,12 +2106,43 @@ class TilingManager {
     return true;
   }
 
+  _onDynamicIdentityChanged(window) {
+    this._excludedAppsCache.delete(window);
+    if (this._applyDynamicAppRuleTarget(window)) {
+      if (this._dynamicWindowSignals.has(window)) this.untrackWindow(window);
+      return;
+    }
+    if (!this._isDynamicTrackable(window)) {
+      this.untrackWindow(window);
+      return;
+    }
+    if (!this._dynamicWindowSignals.has(window) && Settings.ENABLE_DYNAMIC_TILING)
+      this._adoptDynamicWindow(window);
+    this._invalidateManagedWindows();
+    this._invalidateDynamicSlots();
+    this._queueDynamicReflow();
+  }
+
+  _recoverOverflowFloatingWindow(window) {
+    if (!window?.__omnishellOverflowFloating) return false;
+    let frame;
+    try { frame = window.get_frame_rect(); } catch { return false; }
+    if (frame.width > this._workArea.width || frame.height > this._workArea.height) return false;
+    delete window.__omnishellOverflowFloating;
+    this._invalidateManagedWindows();
+    this._invalidateDynamicSlots();
+    this._queueDynamicReflow();
+    return true;
+  }
+
   /**
    * Public eviction method: clears any assigned tile, disconnects tracking
    * signals, and removes the window from dynamic tiling.
    */
   untrackWindow(window) {
     if (!window) return;
+    this._revealStrictWindow(window);
+    delete window.__omnishellOverflowFloating;
     if (window.assignedTile) {
       delete window.assignedTile;
     }
@@ -2109,27 +2287,132 @@ class TilingManager {
     this.refreshDynamicTiling();
   }
 
-  refreshDynamicTiling() {
-    if (!Settings.ENABLE_DYNAMIC_TILING) return false;
-    if (this._destroyed) return false;
-    const byWorkspace = [];
+  /**
+   * Re-evaluate all open windows after an app exclusion or identity change.
+   * This adopts windows that were rejected before their app id arrived and
+   * releases windows that have become excluded without waiting for a reopen.
+   */
+  _reconcileDynamicEligibility() {
+    if (!Settings.ENABLE_DYNAMIC_TILING || this._destroyed) return false;
+    const windows = [];
     for (let i = 0; i < global.workspaceManager.get_n_workspaces(); i++) {
       const ws = global.workspaceManager.get_workspace_by_index(i);
-      if (ws) byWorkspace.push(...getWindows(ws));
+      if (ws) windows.push(...getWindows(ws));
     }
-    const inCreationOrder = [...new Set(byWorkspace)].sort(
-      (a, b) => a.get_stable_sequence() - b.get_stable_sequence()
-    );
-    inCreationOrder.forEach((window) => {
-      this._trackDynamicWindow(window);
-    });
+    const open = new Set(windows);
+    for (const window of [...this._dynamicWindows]) {
+      if (!open.has(window) || !this._isDynamicTrackable(window))
+        this.untrackWindow(window);
+    }
+    const isPrimaryManager = this._monitor.index === (Main.layoutManager.primaryIndex ?? 0);
+    for (const window of new Set(windows)) {
+      if (this._applyDynamicAppRuleTarget(window)) continue;
+      const monitor = window.get_monitor?.() ?? -1;
+      const owns = monitor >= 0 ? monitor === this._monitor.index : isPrimaryManager;
+      if (owns && this._isDynamicTrackable(window) && !this._dynamicWindowSignals.has(window))
+        this._adoptDynamicWindow(window);
+    }
     this._enforceDynamicWindowLimit();
-    this._dynamicArrangements.clear();
-    this._dynamicNewcomers.clear();
     this._invalidateManagedWindows();
     this._invalidateDynamicSlots();
     this._queueDynamicReflow();
     return true;
+  }
+
+  refreshDynamicTiling() {
+    if (!Settings.ENABLE_DYNAMIC_TILING) return false;
+    if (this._destroyed) return false;
+    this._reconcileDynamicEligibility();
+    this._dynamicWindows.forEach((window) => {
+      delete window.__omnishellOverflowFloating;
+      this._placer.forget(placementTargetFor(window));
+    });
+    this._enforceDynamicWindowLimit();
+    this._dynamicArrangements.clear();
+    this._dynamicNewcomers.clear();
+    this._pinnedWindows.clear();
+    this._pinSettleBudget.clear();
+    this._invalidatePins();
+    this._invalidateManagedWindows();
+    this._invalidateDynamicSlots();
+    this._queueDynamicReflow();
+    return true;
+  }
+
+  getDynamicTilingDiagnostics() {
+    const workspaces = [];
+    const allWindows = [];
+    for (let i = 0; i < global.workspaceManager.get_n_workspaces(); i++) {
+      const ws = global.workspaceManager.get_workspace_by_index(i);
+      if (!ws) continue;
+      workspaces.push(ws);
+      allWindows.push(...getWindows(ws));
+    }
+    const uniqueWindows = [...new Set(allWindows)].filter((window) => {
+      const monitor = window.get_monitor?.() ?? -1;
+      return monitor < 0 ? this._monitor.index === (Main.layoutManager.primaryIndex ?? 0)
+        : monitor === this._monitor.index;
+    });
+    const trackedIndex = new Map(this._dynamicWindows.map((window, index) => [window, index]));
+    const limit = Settings.MAX_DYNAMIC_WINDOWS_PER_MONITOR;
+    const windowData = uniqueWindows.map((window) => {
+      let reason = "managed";
+      const type = window.get_window_type?.();
+      const workspace = window.get_workspace?.();
+      const rule = this._dynamicRuleForWindow(window);
+      const trackedSlot = trackedIndex.get(window);
+      const pin = this._pinnedWindows.get(window);
+      const target = placementTargetFor(window);
+      const history = this._placer._history?.get(target);
+      if (isDesktopWindow(window)) reason = "desktop-window";
+      else if (type !== Meta.WindowType.NORMAL || window.get_transient_for?.() || window.is_attached_dialog?.()) reason = "dialog-or-non-normal";
+      else if (rule?.action === "float") reason = "per-app-floating";
+      else if (this._isExcludedFromTiling(window)) reason = "excluded-app";
+      else if (window.minimized) reason = "minimized";
+      else if (window.omnishellUserMaximized && (window.maximizedHorizontally || window.maximizedVertically)) reason = "user-maximized";
+      else if (window.__omnishellOverflowFloating) reason = "minimum-size-incompatible-floating";
+      else if (trackedSlot !== void 0 && limit > 0 && trackedSlot >= limit) reason = "over-window-limit";
+      else if (pin && (pin.width > this._workArea.width || pin.height > this._workArea.height)) reason = "minimum-size-exceeds-workarea";
+      else if (trackedSlot === void 0 && Settings.ENABLE_DYNAMIC_TILING) reason = "not-yet-adopted";
+      else if (window.__omnishellStrictRevealPending) reason = "waiting-for-initial-placement";
+      else if (history?.pending) reason = "placement-pending";
+      let currentFrame = null;
+      let appId = "unknown";
+      try { appId = window.get_gtk_application_id?.() || window.get_wm_class?.() || "unknown"; } catch {}
+      try {
+        const rect = window.get_frame_rect();
+        currentFrame = {x: rect.x, y: rect.y, width: rect.width, height: rect.height};
+      } catch {}
+      return {
+        appId,
+        monitor: window.get_monitor?.() ?? -1,
+        workspace: workspace?.index?.() ?? -1,
+        status: reason,
+        managedSlot: trackedSlot ?? null,
+        currentFrame,
+        desiredFrame: history?.desired ?? null,
+        pinnedMinimum: pin ?? null,
+        pendingGeneration: history?.pending?.generation ?? null
+      };
+    });
+    return {
+      generatedAt: new Date().toISOString(),
+      dynamicTilingEnabled: Settings.ENABLE_DYNAMIC_TILING,
+      monitor: {index: this._monitor.index, workArea: {
+        x: this._workArea.x, y: this._workArea.y,
+        width: this._workArea.width, height: this._workArea.height
+      }},
+      activeWorkspace: global.workspaceManager.get_active_workspace()?.index?.() ?? -1,
+      settings: {
+        placementPolicy: Settings.DYNAMIC_PLACEMENT_POLICY,
+        maxWindowsPerMonitor: limit,
+        overflowPolicy: Settings.DYNAMIC_OVERFLOW_POLICY,
+        strictInitialPlacement: Settings.DYNAMIC_STRICT_INITIAL_PLACEMENT
+      },
+      selectedLayout: this.getCurrentDynamicLayoutId(global.workspaceManager.get_active_workspace()) ?? null,
+      workspaces: workspaces.map((ws) => ws.index()),
+      windows: windowData
+    };
   }
 
   /**
@@ -2149,6 +2432,10 @@ class TilingManager {
 
     const ws = window.get_workspace?.();
     if (ws) {
+      if (this._dynamicRuleForWindow(window)?.placement === "largest") {
+        this._invalidateDynamicSlots();
+        return;
+      }
       const focused = global.display.focus_window;
       const focusedIsManaged = focused ? this._dynamicManagedWindows(ws).includes(focused) : false;
       this._splitTarget = focusedIsManaged ? focused : null;
@@ -2170,6 +2457,7 @@ class TilingManager {
     // a race with a monitor change cannot mutate this window's flags before
     // ownership is known.
     if (!this._trackDynamicWindow(window)) return;
+    this._enforceDynamicWindowLimit();
     // Only the new window is reset. Opening a window must not silently
     // unmaximize every other window the user had deliberately maximized.
     window.omnishellUserMaximized = false;
@@ -2212,6 +2500,7 @@ class TilingManager {
 
     const attachToActor = (actor) => {
       if (!actor) return false;
+      this._hideStrictWindow(window, actor);
       this._signals.connect(actor, "first-frame", () => {
         this._signals.disconnect(actor);
         applyTiling();
@@ -2241,12 +2530,58 @@ class TilingManager {
           return GLib.SOURCE_REMOVE;
         }
         if (++retries > 40) {
-          applyTiling();
+          // A compositor actor can be created after the first idle retry
+          // window (especially during slow app startup). Keep a bounded,
+          // low-frequency watcher so that the window is not permanently
+          // skipped just because first-frame arrived late.
+          let actorRetries = 0;
+          this._addDynamicTimeout(100, () => {
+            if (applied || this._destroyed) return GLib.SOURCE_REMOVE;
+            const lateActor = window.get_compositor_private();
+            if (lateActor) {
+              this._hideStrictWindow(window, lateActor);
+              attachToActor(lateActor);
+              applyTiling();
+              return GLib.SOURCE_REMOVE;
+            }
+            if (++actorRetries >= 100) {
+              this._queueDynamicReflow();
+              return GLib.SOURCE_REMOVE;
+            }
+            return GLib.SOURCE_CONTINUE;
+          });
           return GLib.SOURCE_REMOVE;
         }
         return GLib.SOURCE_CONTINUE;
       });
     }
+  }
+
+  _hideStrictWindow(window, actor) {
+    if (!Settings.DYNAMIC_STRICT_INITIAL_PLACEMENT || !actor || window.__omnishellStrictRevealPending)
+      return;
+    window.__omnishellStrictRevealPending = true;
+    try { actor.opacity = 0; } catch {}
+    window.__omnishellStrictRevealTimeout = this._addDynamicTimeout(1800, () => {
+      window.__omnishellStrictRevealTimeout = 0;
+      this._revealStrictWindow(window, false);
+      return GLib.SOURCE_REMOVE;
+    });
+  }
+
+  _revealStrictWindow(window, cancelTimeout = true) {
+    if (!window?.__omnishellStrictRevealPending) return;
+    window.__omnishellStrictRevealPending = false;
+    const timeoutId = window.__omnishellStrictRevealTimeout;
+    window.__omnishellStrictRevealTimeout = 0;
+    if (cancelTimeout && timeoutId) {
+      try { GLib.Source.remove(timeoutId); } catch {}
+      this._dynamicIdleSources.delete(timeoutId);
+    }
+    try {
+      const actor = window.get_compositor_private?.();
+      if (actor) actor.opacity = 255;
+    } catch {}
   }
 
   /**
@@ -2296,11 +2631,12 @@ class TilingManager {
       return tree;
     }
 
-    if (selectedLayout && selectedLayout.tiles.length === windowCount) {
+    if (selectedLayout) {
       const match = candidates.find((c) => c.id === selectedId);
       if (match) {
-        this._dynamicTreeCache.set(ws, { windowCount, tree: match.tree });
-        return match.tree;
+        const tree = this._applySavedDynamicRatios(match.tree, ws, match.id);
+        this._dynamicTreeCache.set(ws, { windowCount, tree });
+        return tree;
       }
     }
 
@@ -2308,9 +2644,19 @@ class TilingManager {
       candidates.map((c) => c.tileCount),
       windowCount
     );
-    const tree = index < 0 ? null : candidates[index].tree;
+    const candidate = index < 0 ? null : candidates[index];
+    const tree = candidate ? this._applySavedDynamicRatios(candidate.tree, ws, candidate.id) : null;
     this._dynamicTreeCache.set(ws, { windowCount, tree });
     return tree;
+  }
+
+  _dynamicRatioProfileKey(ws, layoutId) {
+    return `${this._monitor.index}:${ws?.index?.() ?? 0}:${layoutId}`;
+  }
+
+  _applySavedDynamicRatios(tree, ws, layoutId) {
+    const ratios = Settings.DYNAMIC_SPLIT_RATIOS[this._dynamicRatioProfileKey(ws, layoutId)];
+    return ratios ? applyDynamicRatios(tree, ratios) : tree;
   }
 
   /**
@@ -2327,7 +2673,7 @@ class TilingManager {
     if (!layouts || layouts.length === 0) return void 0;
     const selectedId = this._selectedDynamicLayouts?.get(ws);
     const selectedLayout = selectedId ? layouts.find((l) => l.id === selectedId) : null;
-    if (selectedLayout && selectedLayout.tiles.length === windowCount) {
+    if (selectedLayout) {
       return selectedId;
     }
     const candidates = layouts
@@ -2395,6 +2741,107 @@ class TilingManager {
     return true;
   }
 
+  resizeDynamicSplit(direction, step = 0.025) {
+    const axis = direction === "left" || direction === "right" ? "x"
+      : direction === "up" || direction === "down" ? "y" : null;
+    if (!axis) return false;
+    const window = global.display.focus_window;
+    const ws = window?.get_workspace?.();
+    if (!window || !ws) return false;
+    const slots = this._dynamicSlots(ws);
+    const slot = slots?.windows.indexOf(window) ?? -1;
+    if (slot < 0) return false;
+    const tree = this._dynamicTree(slots.windows.length, ws);
+    if (!tree) return false;
+    const rect = slots.rects[slot];
+    const center = {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
+    const ancestors = [];
+    const walk = (node, path = []) => {
+      if (node.kind === "leaf") return;
+      const bounds = dynamicTreeBounds(node);
+      if (node.axis === axis) ancestors.push({node, path, bounds});
+      if (node.axis === "x") walk(center.x < node.at ? node.first : node.second,
+        [...path, center.x < node.at ? "first" : "second"]);
+      else walk(center.y < node.at ? node.first : node.second,
+        [...path, center.y < node.at ? "first" : "second"]);
+    };
+    walk(tree);
+    const target = ancestors.at(-1);
+    if (!target || target.bounds[axis === "x" ? "width" : "height"] <= 0) return false;
+    const start = target.bounds[axis === "x" ? "x" : "y"];
+    const extent = target.bounds[axis === "x" ? "width" : "height"];
+    const currentRatio = (target.node.at - start) / extent;
+    const delta = direction === "right" || direction === "down" ? step : -step;
+    const nextRatio = Math.max(0.1, Math.min(0.9, currentRatio + delta));
+    const profileKey = this._dynamicRatioProfileKey(ws, this.getCurrentDynamicLayoutId(ws));
+    const profiles = Settings.DYNAMIC_SPLIT_RATIOS;
+    const profile = {...(profiles[profileKey] ?? {})};
+    profile[target.path.join(".") || "root"] = nextRatio;
+    profiles[profileKey] = profile;
+    Settings.DYNAMIC_SPLIT_RATIOS = profiles;
+    return true;
+  }
+
+  _persistManualSplitRatios(window) {
+    if (!Settings.ENABLE_DYNAMIC_TILING || !this._dynamicWindowSignals.has(window)) return false;
+    const ws = window.get_workspace?.();
+    if (!ws) return false;
+    const windows = this._dynamicManagedWindows(ws);
+    const tree = this._dynamicTree(windows.length, ws);
+    const layoutId = this.getCurrentDynamicLayoutId(ws);
+    if (!tree || !layoutId || windows.length < 2) return false;
+    const frames = [];
+    for (const managedWindow of windows) {
+      try {
+        const frame = managedWindow.get_frame_rect();
+        const normalized = {
+          x: (frame.x - this._workArea.x) / this._workArea.width,
+          y: (frame.y - this._workArea.y) / this._workArea.height,
+          width: frame.width / this._workArea.width,
+          height: frame.height / this._workArea.height
+        };
+        frames.push({
+          center: {x: normalized.x + normalized.width / 2, y: normalized.y + normalized.height / 2},
+          rect: normalized
+        });
+      } catch {}
+    }
+    const profileKey = this._dynamicRatioProfileKey(ws, layoutId);
+    const profiles = Settings.DYNAMIC_SPLIT_RATIOS;
+    const profile = {...(profiles[profileKey] ?? {})};
+    let changed = false;
+    const capture = (node, path, candidates) => {
+      if (node.kind === "leaf") return;
+      const bounds = dynamicTreeBounds(node);
+      const start = node.axis === "x" ? bounds.x : bounds.y;
+      const extent = node.axis === "x" ? bounds.width : bounds.height;
+      const firstWindows = candidates.filter((item) => item.center[node.axis] < node.at);
+      const secondWindows = candidates.filter((item) => item.center[node.axis] >= node.at);
+      if (firstWindows.length && secondWindows.length && extent > 0) {
+        const axis = node.axis;
+        const axisStart = axis === "x" ? "x" : "y";
+        const axisSize = axis === "x" ? "width" : "height";
+        const firstEnd = Math.max(...firstWindows.map((item) => item.rect[axisStart] + item.rect[axisSize]));
+        const secondStart = Math.min(...secondWindows.map((item) => item.rect[axisStart]));
+        const ratio = ((firstEnd + secondStart) / 2 - start) / extent;
+        if (ratio >= 0.1 && ratio <= 0.9) {
+          const key = path.join(".") || "root";
+          if (!Number.isFinite(profile[key]) || Math.abs(profile[key] - ratio) >= 0.005) {
+            profile[key] = ratio;
+            changed = true;
+          }
+        }
+      }
+      capture(node.first, [...path, "first"], firstWindows);
+      capture(node.second, [...path, "second"], secondWindows);
+    };
+    capture(tree, [], frames);
+    if (!changed) return false;
+    profiles[profileKey] = profile;
+    Settings.DYNAMIC_SPLIT_RATIOS = profiles;
+    return true;
+  }
+
   /**
    * Managed windows currently placeable on this monitor and workspace, in
    * slot order. Minimized windows stay tracked (see `_isDynamicTrackable`)
@@ -2413,6 +2860,7 @@ class TilingManager {
 
     const isPrimaryManager = this._monitor.index === (Main.layoutManager.primaryIndex ?? 0);
     const windows = this._dynamicWindows.filter((w) => {
+      if (w.__omnishellOverflowFloating) return false;
       if (!this._isDynamicEligible(w)) return false;
       const windowWs = w.get_workspace?.() ?? global.workspaceManager.get_active_workspace();
       if (windowWs !== ws) return false;
@@ -2441,8 +2889,9 @@ class TilingManager {
       if (!byWorkspace.has(ws)) byWorkspace.set(ws, []);
       byWorkspace.get(ws).push(window);
     }
-    for (const windows of byWorkspace.values()) {
+    for (const [workspace, windows] of byWorkspace) {
       for (const window of windows.slice(limit)) {
+        if (this._moveDynamicOverflowWindow(window, workspace)) continue;
         if (!window.assignedTile) continue;
         const originalSize = window.originalSize;
         delete window.assignedTile;
@@ -2455,6 +2904,24 @@ class TilingManager {
       }
     }
     this._invalidatePins();
+  }
+
+  _moveDynamicOverflowWindow(window, workspace) {
+    if (Settings.DYNAMIC_OVERFLOW_POLICY !== "next-workspace") return false;
+    const index = workspace?.index?.();
+    if (!Number.isInteger(index)) return false;
+    const nextWorkspace = global.workspaceManager.get_workspace_by_index(index + 1);
+    if (!nextWorkspace || nextWorkspace === workspace) return false;
+    try {
+      window.change_workspace(nextWorkspace);
+      this._placer.forget(placementTargetFor(window));
+      delete window.assignedTile;
+      this._pinnedWindows.delete(window);
+      this._pinSettleBudget.delete(window);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   _tileOf(rect) {
@@ -2610,16 +3077,30 @@ class TilingManager {
     if (windowCreated) {
       const windowActor = window.get_compositor_private();
       if (!windowActor) return;
-      this._signals.connect(windowActor, "first-frame", () => {
-        this._signals.disconnect(windowActor);
+      window.__omnishellAutoTileReservation = vacantTile;
+      const reservation = {actor: windowActor, firstFrameId: 0, unmanagedId: 0};
+      reservation.firstFrameId = windowActor.connect("first-frame", () => {
+        this._releaseAutoTileReservation(window);
         if (isDesktopWindow(window)) return;
         if (!window.minimized && !window.maximizedHorizontally && !window.maximizedVertically && !window.maximized_horizontally && !window.maximized_vertically && window.get_transient_for() === null && !window.is_attached_dialog())
           this._easeWindowRectFromTile(vacantTile, window, true);
       });
+      reservation.unmanagedId = window.connect("unmanaged", () =>
+        this._releaseAutoTileReservation(window));
+      this._autoTileReservations.set(window, reservation);
     } else {
       if (isDesktopWindow(window)) return;
       this._easeWindowRectFromTile(vacantTile, window, true);
     }
+  }
+
+  _releaseAutoTileReservation(window) {
+    delete window.__omnishellAutoTileReservation;
+    const reservation = this._autoTileReservations.get(window);
+    if (!reservation) return;
+    this._autoTileReservations.delete(window);
+    try { reservation.actor.disconnect(reservation.firstFrameId); } catch {}
+    try { window.disconnect(reservation.unmanagedId); } catch {}
   }
 
   _findEmptyTile(window) {
@@ -2632,8 +3113,12 @@ class TilingManager {
     const tilingLayout = this._workspaceTilingLayout.get(windowWorkspace);
     if (!tilingLayout) return void 0;
     const tiledWindows = getWindows(windowWorkspace).filter((otherWindow) => {
-      return otherWindow && otherWindow.assignedTile && !otherWindow.minimized && !otherWindow.maximizedVertically && !otherWindow.maximizedHorizontally && !otherWindow.maximized_vertically && !otherWindow.maximized_horizontally;
-    }).map((w) => w);
+      return otherWindow && otherWindow !== window &&
+        (otherWindow.assignedTile || otherWindow.__omnishellAutoTileReservation) &&
+        !otherWindow.minimized && !otherWindow.maximizedVertically &&
+        !otherWindow.maximizedHorizontally && !otherWindow.maximized_vertically &&
+        !otherWindow.maximized_horizontally;
+    });
     const winMonitor = typeof window?.get_monitor === "function" ? window.get_monitor() : -1;
     const effectiveMonitor = winMonitor >= 0 ? winMonitor : this._monitor.index;
     const tiles = GlobalState.get().getSelectedLayoutOfMonitor(
@@ -2654,9 +3139,12 @@ class TilingManager {
       // (the tile shrunk by the gaps), which is the same space the window
       // actually occupies.
       const windowRect = this._windowRectForTile(t, tilingLayout);
-      return !tiledWindows.find(
-        (win) => windowRect.overlap(win.get_frame_rect())
-      );
+      return !tiledWindows.find((win) => {
+        const occupiedRect = win.__omnishellAutoTileReservation
+          ? this._windowRectForTile(win.__omnishellAutoTileReservation, tilingLayout)
+          : win.get_frame_rect();
+        return occupiedRect && windowRect.overlap(occupiedRect);
+      });
     });
     if (vacantTiles.length === 0) return void 0;
     vacantTiles.sort((a, b) => a.x - b.x);

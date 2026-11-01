@@ -871,10 +871,10 @@ export var DesktopManager = class {
                 return true;
             }
         } else if (isCtrl && isShift && ((keyval === Gdk.KEY_Z) || (keyval === Gdk.KEY_z))) {
-            this._doRedo();
+            DBusUtils.RemoteFileOperations.RedoRemote();
             return true;
         } else if (isCtrl && ((keyval === Gdk.KEY_Z) || (keyval === Gdk.KEY_z))) {
-            this.doUndo();
+            DBusUtils.RemoteFileOperations.UndoRemote();
             return true;
         } else if (isCtrl && ((keyval === Gdk.KEY_C) || (keyval === Gdk.KEY_c))) {
             this.doCopy();
@@ -1279,7 +1279,8 @@ export var DesktopManager = class {
     _destroyFileList(fileList) {
         if (fileList) {
             for (const item of fileList)
-                item._onDestroy();
+                if (item && !item._destroyed)
+                    item._onDestroy();
         }
     }
 
@@ -1414,6 +1415,10 @@ export var DesktopManager = class {
     }
 
     _drawDesktop(fileList) {
+        const previousItems = new Set([
+            ...(this._allFileList ?? []),
+            ...(this._fileList ?? [])
+        ]);
         // Clear stacking data that references items about to be destroyed
         this._allFileList = null;
         this.stackInitialCoordinates = null;
@@ -1424,6 +1429,10 @@ export var DesktopManager = class {
             this._renameWindow.updateFileItem(null);
         }
         this._removeAllFilesFromGrids();
+        // In stacked mode `_allFileList` also owns hidden members that were
+        // not removed from grids above. Destroy the union so their settings
+        // handlers and async resources are released exactly once.
+        this._destroyFileList([...previousItems]);
         this._fileList = fileList;
         // Select the files that were selected before the repaint
         if (this._selectedFiles) {

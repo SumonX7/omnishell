@@ -60,8 +60,10 @@ export var ThumbnailLoader = class {
             }
             // if the file disappeared while waiting in the queue, don't refresh the thumbnail
             [file, resolve] = this._thumbList.shift();
-            if (file._destroyed)
+            if (file._destroyed) {
+                resolve(null);
                 continue;
+            }
 
             if (file.file.query_exists(null)) {
                 if (this._thumbnailFactoryLarge.has_valid_failed_thumbnail(file.uri, file.modifiedTime)) {
@@ -70,6 +72,8 @@ export var ThumbnailLoader = class {
                 } else {
                     break;
                 }
+            } else {
+                resolve(null);
             }
         } while (true);
         this._running = true;
@@ -83,45 +87,50 @@ export var ThumbnailLoader = class {
         const fileInfo = file.file.query_info('standard::content-type,time::modified', Gio.FileQueryInfoFlags.NONE, null);
         this._doCancel = new Gio.Cancellable();
         const modifiedTime = fileInfo.get_attribute_uint64('time::modified');
-        this._thumbnailFactoryLarge.generate_thumbnail_async(file.uri, fileInfo.get_content_type(), this._doCancel, (obj, res) => {
+        let completed = false;
+        const finish = (useCache = true) => {
+            if (completed) return;
+            completed = true;
             this._removeTimeout();
+            if (!useCache || !this._resolveThumbnail(file, resolve)) resolve(null);
+            this._launchNewBuild();
+        };
+        this._thumbnailFactoryLarge.generate_thumbnail_async(file.uri, fileInfo.get_content_type(), this._doCancel, (obj, res) => {
             try {
                 const thumbnailPixbuf = obj.generate_thumbnail_finish(res);
                 this._thumbnailFactoryLarge.save_thumbnail_async(thumbnailPixbuf, file.uri, modifiedTime, this._doCancel, (obj2, res2) => {
                     try {
                         obj2.save_thumbnail_finish(res2);
-                        this._resolveThumbnail(file, resolve);
+                        finish();
                     } catch (err) {
                         print(`Error saving thumbnail: ${err.message}`);
-                        resolve(null);
+                        finish(false);
                     }
-                    this._launchNewBuild();
                 });
             } catch (e) {
                 print(`Error while creating thumbnail: ${e.message}\n${e.stack}`);
-                this._createFailedThumbnailAsync(file, modifiedTime, resolve);
+                this._createFailedThumbnailAsync(file, modifiedTime, finish);
             }
         });
         this._timeoutID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._timeoutValue, () => {
             print(`Timeout while generating thumbnail for ${file.displayName}`);
             this._timeoutID = 0;
             this._doCancel.cancel();
-            this._createFailedThumbnailAsync(file, modifiedTime, resolve);
+            this._createFailedThumbnailAsync(file, modifiedTime, finish);
             return false;
         });
     }
 
-    _createFailedThumbnailAsync(file, modifiedTime, resolve) {
+    _createFailedThumbnailAsync(file, modifiedTime, finish) {
         this._doCancel = new Gio.Cancellable();
         this._thumbnailFactoryLarge.create_failed_thumbnail_async(file.uri, modifiedTime, this._doCancel, (obj, res) => {
             try {
                 obj.create_failed_thumbnail_finish(res);
-                this._resolveThumbnail(file, resolve);
+                finish();
             } catch (e) {
                 print(`Error while creating failed thumbnail: ${e.message}\n${e.stack}`);
-                resolve(null);
+                finish(false);
             }
-            this._launchNewBuild();
         });
     }
 
@@ -129,6 +138,14 @@ export var ThumbnailLoader = class {
         const args = [];
         args.push(GLib.build_filenamev([this._codePath, 'createThumbnail.js']));
         args.push(file.path);
+        let completed = false;
+        const finish = (useCache = true) => {
+            if (completed) return;
+            completed = true;
+            this._removeTimeout();
+            if (!useCache || !this._resolveThumbnail(file, resolve)) resolve(null);
+            this._launchNewBuild();
+        };
         this._proc = new Gio.Subprocess({argv: args});
         this._proc.init(null);
         this._proc.wait_check_async(null, (source, result) => {
@@ -137,23 +154,23 @@ export var ThumbnailLoader = class {
                 const result2 = source.wait_check_finish(result);
                 if (result2) {
                     const status = source.get_status();
-                    if (status === 0)
-                        this._resolveThumbnail(file, resolve);
+                    if (status === 0) finish();
+                    else finish(false);
                 } else {
                     print(`Failed to generate thumbnail for ${file.displayName}`);
-                    resolve(null);
+                    finish(false);
                 }
             } catch (error) {
                 print(`Exception when generating thumbnail for ${file.displayName}: ${error}`);
-                resolve(null);
+                finish(false);
             }
-            this._launchNewBuild();
         });
         this._timeoutID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._timeoutValue, () => {
             print(`Timeout while generating thumbnail for ${file.displayName}`);
             this._timeoutID = 0;
             this._proc.force_exit();
-            this._thumbnailFactoryLarge.create_failed_thumbnail(file.uri, file.modifiedTime);
+            try { this._thumbnailFactoryLarge.create_failed_thumbnail(file.uri, file.modifiedTime); } catch {}
+            finish();
             return false;
         });
     }

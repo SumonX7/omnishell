@@ -19,6 +19,7 @@ const _TilingLayoutWithSuggestions = class _TilingLayoutWithSuggestions extends 
   _lastTiledWindow;
   _showing;
   _oldPreviews;
+  _visibilityGeneration = 0;
   _touchHelper;
   constructor(innerGaps, outerGaps, containerRect, scalingFactor) {
     super({
@@ -50,6 +51,9 @@ const _TilingLayoutWithSuggestions = class _TilingLayoutWithSuggestions extends 
 
   open(tiledWindows, nontiledWindows, window, windowDesiredRect, monitorIndex) {
     if (this._showing) return;
+    this._visibilityGeneration++;
+    this.cancelTransitions();
+    this.opacity = 255;
     this._showing = true;
     this._lastTiledWindow = global.display.focusWindow;
     this._showVacantPreviewsOnly(tiledWindows, windowDesiredRect, window);
@@ -216,6 +220,7 @@ const _TilingLayoutWithSuggestions = class _TilingLayoutWithSuggestions extends 
 
   close() {
     if (!this._showing) return;
+    const generation = ++this._visibilityGeneration;
     this._showing = false;
     this._signals.disconnect();
     if (this._lastTiledWindow) {
@@ -233,6 +238,7 @@ const _TilingLayoutWithSuggestions = class _TilingLayoutWithSuggestions extends 
       duration: GlobalState.get().tilePreviewAnimationTime,
       mode: Clutter.AnimationMode.EASE_OUT_QUAD,
       onStopped: () => {
+        if (generation !== this._visibilityGeneration || this._showing) return;
         this.hide();
         this._previews.forEach((prev) => prev.open());
       }

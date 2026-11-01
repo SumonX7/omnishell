@@ -55,18 +55,9 @@ function isDesktopWindow(window) {
     }
   } catch {
   }
-  try {
-    const title = window.get_title?.();
-    if (title && (
-      title === "DING" ||
-      title.startsWith("DING") ||
-      title.startsWith("Desktop Icons") ||
-      title.startsWith("@!")
-    )) {
-      return true;
-    }
-  } catch {
-  }
+  // Window titles are user controlled and ordinary applications may use
+  // words such as "Desktop" or "DING". DING ownership is determined by the
+  // compositor type, registered bridge identity, or exact app ids above.
   return false;
 }
 export {

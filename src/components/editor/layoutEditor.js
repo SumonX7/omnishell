@@ -25,6 +25,8 @@ const _LayoutEditor = class _LayoutEditor extends St.Widget {
   _hoverWidget;
   _sliders;
   _minimizedWindows;
+  _history;
+  _historyIndex;
   constructor(layout, monitor, enableScaling) {
     super({ styleClass: "layout-editor" });
     Main.layoutManager.addChrome(this);
@@ -60,6 +62,7 @@ const _LayoutEditor = class _LayoutEditor extends St.Widget {
     );
     this._hoverWidget = new HoverLine(this);
     this._layout = layout;
+    this._resetHistory();
     this._drawEditor();
     this.grab_key_focus();
     this.connect("destroy", this._onDestroy.bind(this));
@@ -74,7 +77,69 @@ const _LayoutEditor = class _LayoutEditor extends St.Widget {
     this._sliders = [];
     this._hoverWidget = new HoverLine(this);
     this._layout = newLayout;
+    this._resetHistory();
     this._drawEditor();
+  }
+
+  _snapshotLayout() {
+    return this._layout.tiles.map((tile) => ({
+      x: tile.x,
+      y: tile.y,
+      width: tile.width,
+      height: tile.height,
+      groups: [...tile.groups]
+    }));
+  }
+
+  _resetHistory() {
+    this._history = [this._snapshotLayout()];
+    this._historyIndex = 0;
+  }
+
+  _recordHistory() {
+    const snapshot = this._snapshotLayout();
+    if (JSON.stringify(snapshot) === JSON.stringify(this._history[this._historyIndex]))
+      return;
+    this._history = this._history.slice(0, this._historyIndex + 1);
+    this._history.push(snapshot);
+    if (this._history.length > 100) this._history.shift();
+    this._historyIndex = this._history.length - 1;
+  }
+
+  _restoreHistory(index) {
+    if (index < 0 || index >= this._history.length || index === this._historyIndex)
+      return false;
+    this._historyIndex = index;
+    this._layout.tiles = this._history[index].map((tile) => new Tile({
+      ...tile,
+      groups: [...tile.groups]
+    }));
+    this.destroy_all_children();
+    this._sliders = [];
+    this._hoverWidget = new HoverLine(this);
+    this._drawEditor();
+    return true;
+  }
+
+  undo() {
+    return this._restoreHistory(this._historyIndex - 1);
+  }
+
+  redo() {
+    return this._restoreHistory(this._historyIndex + 1);
+  }
+
+  vfunc_key_press_event(event) {
+    const key = event.get_key_symbol();
+    const state = event.get_state();
+    const control = (state & Clutter.ModifierType.CONTROL_MASK) !== 0;
+    if (control && (key === Clutter.KEY_z || key === Clutter.KEY_Z)) {
+      const shift = (state & Clutter.ModifierType.SHIFT_MASK) !== 0;
+      if (shift) this.redo();
+      else this.undo();
+      return Clutter.EVENT_STOP;
+    }
+    return Clutter.EVENT_PROPAGATE;
   }
 
   _drawEditor() {
@@ -245,6 +310,7 @@ const _LayoutEditor = class _LayoutEditor extends St.Widget {
     }
     this._hoverWidget.handleTileDestroy(editableTile);
     editableTile.destroy();
+    this._recordHistory();
   }
 
   deleteTile(editableTile) {
@@ -263,6 +329,7 @@ const _LayoutEditor = class _LayoutEditor extends St.Widget {
         this._hoverWidget.handleTileDestroy(editableTile);
         editableTile.destroy();
         slider.destroy();
+        this._recordHistory();
         return;
       }
     }
@@ -270,7 +337,7 @@ const _LayoutEditor = class _LayoutEditor extends St.Widget {
 
   _buildSlider(isHorizontal, coord, groupId) {
     if (!groupId) {
-      const groups = this._sliders.map((slider) => slider.groupId).sort();
+      const groups = this._sliders.map((slider) => slider.groupId).sort((a, b) => a - b);
       groupId = groups.length === 0 ? 1 : groups[groups.length - 1] + 1;
       for (let i = 1; i < groups.length; i++) {
         if (groups[i - 1] + 1 < groups[i]) {
@@ -279,7 +346,9 @@ const _LayoutEditor = class _LayoutEditor extends St.Widget {
         }
       }
     }
-    return new Slider(this, groupId, coord, coord, isHorizontal);
+    const slider = new Slider(this, groupId, coord, coord, isHorizontal);
+    slider.connect("slide-end", () => this._recordHistory());
+    return slider;
   }
 
   _onDestroy() {

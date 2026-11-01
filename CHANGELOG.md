@@ -5,6 +5,56 @@ All notable changes to OmniShell are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-10-31
+
+### 🚀 Dynamic Tiling & Gap Management
+* **Pending Resize Generation Tracking**:
+  * Each new destination now receives a unique generation ID; stale placement retries or late geometry callbacks can no longer overwrite the active target.
+  * Reconciles open windows on manual Refresh or extension toggle by resetting placement history and layout caches with visual menu feedback.
+  * Automatically re-adopts existing open windows when toggling the extension off/on.
+* **Window Lifecycle & Minimize/Restore Reflow**:
+  * Extracted `Meta.Window` reliably from `Actor` during minimize/restore signals to trigger exact per-window reflow.
+  * Queued layout recovery if an application self-maximizes during startup.
+  * Invalidate identity and exclusion cache if application ID arrives late, recalculating rules dynamically.
+* **Strict Initial Window Placement & Reveal**:
+  * Introduced strict initial placement mode where new windows remain invisible until the initial tile settles, with a safety 1.8s fallback reveal timeout (configurable via Preferences).
+  * Maintained strict separation for transient dialogs, file choosers, and popups so they remain floating and never forced into tiling slots.
+* **3-to-2 Window Geometry & Negative Coordinate Monitors**:
+  * Fixed 3-to-2 window reflow geometry ensuring 100% workspace coverage without gaps.
+  * Fixed geometry handling on secondary monitors positioned at negative virtual coordinates.
+  * Added first-frame tile reservations in static auto-tiling, preventing simultaneously launching apps from claiming the same slot.
+* **Smart Overflow Policy**:
+  * If a window's minimum required size exceeds available work area, the default overflow policy gracefully floats the window until space permits or it can rejoin the layout, with an alternative policy to migrate to the next workspace.
+
+### ⚙️ Enhanced Controls & Preferences
+* **App-Specific Rules & Placement Policies**:
+  * Added detailed per-app rule manager in Preferences with an installed application picker: configure Tile, Float, or Maximize rules, preferred monitor/workspace, and placement policy (Focused vs. Largest).
+  * Added separate master switch for Dynamic Tiling and strict first-placement toggle.
+* **Split Boundary Ratio & Keyboard Resizing**:
+  * Preserved dynamic split boundary ratios across layout recalculations.
+  * Added 4 keyboard shortcuts to resize active dynamic split boundaries in real time.
+* **Layout Editor Undo/Redo & Gestures**:
+  * Added `Ctrl+Z` / `Ctrl+Shift+Z` undo/redo in Layout Editor with visual shortcut hints.
+  * Click for horizontal split, `Ctrl+click` for vertical split with explicit directional indicators in the editor legend.
+  * Preserved window creation order when windows are closed.
+* **Dynamic Diagnostics**:
+  * Added JSON diagnostics export directly from the indicator menu to the clipboard (captures per-window status/reason, monitor work areas, desired frame geometry, pins, and pending generations).
+
+### 🛡️ Desktop Integration & DING Hardening
+* **Archive & Popover Security**:
+  * Prevented archive cleanup from traversing symlinks outside the extraction target.
+  * Migrated rename popover reparenting to modern GTK4 API with reliable keyboard focus via `grab_focus()`.
+* **Asynchronous D-Bus & Wayland Platform Safety**:
+  * Ensured async D-Bus operations send resolved Wayland platform data and release exported handles exactly once on callback or error.
+  * Corrected Undo/Redo availability checks and event handlers.
+* **Thumbnailer & DING Identity Robustness**:
+  * Settled promises properly on thumbnailer timeout, failure, or file disappearance to keep the thumbnail queue progressing.
+  * Cleaned up progress inhibitor when encrypted archive password prompt is canceled.
+  * Ensured stacked desktop refresh cleans up all prior `FileItem` instances including hidden ones.
+  * Prevented duplicate startup callbacks and cleared pending DING window identity signals on extension disable or unmanage.
+  * Terminated fall-through to generic URI launcher after AppImage launch.
+  * Hardened desktop window classification against arbitrary window title spoofing.
+
 ## [1.0.5] - 2026-10-29
 
 ### 🚀 Dynamic Tiling Gap-Fill & Reflow Stability

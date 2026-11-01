@@ -260,8 +260,8 @@ class ResizingManager {
         try {
           otherWindow.move_resize_frame(
             false,
-            Math.max(0, rect[0]),
-            Math.max(0, rect[1]),
+            rect[0],
+            rect[1],
             Math.max(0, rect[2]),
             Math.max(0, rect[3])
           );

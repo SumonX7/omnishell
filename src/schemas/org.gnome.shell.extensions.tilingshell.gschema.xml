@@ -132,6 +132,26 @@
             <summary>Dynamic tiling animation time (milliseconds)</summary>
             <description>Duration of completed dynamic reflows. Zero disables this animation.</description>
         </key>
+        <key name="dynamic-strict-initial-placement" type="b">
+            <default>true</default>
+            <summary>Wait for initial dynamic placement</summary>
+            <description>Keep a new tiled window hidden until its first placement settles. A timeout reveals it if the client does not settle.</description>
+        </key>
+        <key name="dynamic-overflow-policy" type="s">
+            <default>'float'</default>
+            <summary>Dynamic overflow policy</summary>
+            <description>Leave over-limit or minimum-size-incompatible windows floating, or move them to the next existing workspace.</description>
+        </key>
+        <key name="dynamic-app-rules" type="s">
+            <default>'[]'</default>
+            <summary>Dynamic application rules</summary>
+            <description>Per-application action, placement policy, monitor, and workspace preferences.</description>
+        </key>
+        <key name="dynamic-split-ratios" type="s">
+            <default>'{}'</default>
+            <summary>Dynamic split ratios</summary>
+            <description>Saved dynamic boundary ratios keyed by workspace and layout.</description>
+        </key>
         <key name="raise-together" type="b">
             <default>false</default>
             <summary>Raise tiled windows together</summary>
@@ -329,6 +349,22 @@
         <key type="as" name="move-window-to-prev-workspace">
             <default><![CDATA[['<Super><Shift>Down']]]></default>
             <summary>Move focused window to the previous workspace</summary>
+        </key>
+        <key type="as" name="resize-dynamic-split-left">
+            <default><![CDATA[['<Alt><Super>Left']]]></default>
+            <summary>Move the focused dynamic split boundary left</summary>
+        </key>
+        <key type="as" name="resize-dynamic-split-right">
+            <default><![CDATA[['<Alt><Super>Right']]]></default>
+            <summary>Move the focused dynamic split boundary right</summary>
+        </key>
+        <key type="as" name="resize-dynamic-split-up">
+            <default><![CDATA[['<Alt><Super>Up']]]></default>
+            <summary>Move the focused dynamic split boundary up</summary>
+        </key>
+        <key type="as" name="resize-dynamic-split-down">
+            <default><![CDATA[['<Alt><Super>Down']]]></default>
+            <summary>Move the focused dynamic split boundary down</summary>
         </key>
         <key name="enable-desktop-icons" type="b">
             <default>true</default>

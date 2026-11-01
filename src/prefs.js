@@ -505,6 +505,16 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
       description: _("Configure the behaviour of Tiling Shell")
     });
     prefsPage.add(behaviourGroup);
+    behaviourGroup.add(this._buildSwitchRow(
+      Settings.KEY_ENABLE_DYNAMIC_TILING,
+      _("Enable Dynamic Tiling"),
+      _("Tile eligible windows automatically and keep the workspace filled")
+    ));
+    behaviourGroup.add(this._buildSwitchRow(
+      Settings.KEY_DYNAMIC_STRICT_INITIAL_PLACEMENT,
+      _("Wait for first dynamic placement"),
+      _("Hide a new window until its first tile is set; a timeout reveals it if placement stalls")
+    ));
     const snapAssistRow = this._buildSwitchRow(
       Settings.KEY_SNAP_ASSIST,
       _("Enable Snap Assistant"),
@@ -549,6 +559,27 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
       syncDynamicPlacement
     );
     behaviourGroup.add(dynamicPlacementRow);
+    const overflowModel = new Gtk.StringList();
+    overflowModel.append(_("Leave floating"));
+    overflowModel.append(_("Move to next workspace"));
+    const overflowRow = new Adw.ComboRow({
+      title: _("Dynamic overflow policy"),
+      subtitle: _("Choose what happens when a window exceeds the limit or cannot fit its minimum size"),
+      model: overflowModel
+    });
+    const overflowValues = ["float", "next-workspace"];
+    const syncOverflow = () => {
+      const index = overflowValues.indexOf(Settings.DYNAMIC_OVERFLOW_POLICY);
+      if (index >= 0 && overflowRow.selected !== index) overflowRow.selected = index;
+    };
+    syncOverflow();
+    overflowRow.connect("notify::selected", () => {
+      const value = overflowValues[overflowRow.selected];
+      if (value) Settings.DYNAMIC_OVERFLOW_POLICY = value;
+    });
+    this._connectSetting(Settings.gioSetting,
+      `changed::${Settings.KEY_DYNAMIC_OVERFLOW_POLICY}`, syncOverflow);
+    behaviourGroup.add(overflowRow);
     behaviourGroup.add(
       this._buildSpinButtonRow(
         Settings.KEY_MAX_DYNAMIC_WINDOWS_PER_MONITOR,
@@ -595,6 +626,7 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
     behaviourGroup.add(autoTilingRow);
     const excludedAppsRow = this._buildExcludedAppsRow();
     behaviourGroup.add(excludedAppsRow);
+    behaviourGroup.add(this._buildDynamicAppRulesRow());
     const resizeComplementingRow = this._buildSwitchRow(
       Settings.KEY_RESIZE_COMPLEMENTING_WINDOWS,
       _("Enable auto-resize of the complementing tiled windows"),
@@ -1042,6 +1074,34 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
         Settings.SETTING_CYCLE_DYNAMIC_LAYOUT_BACKWARD,
         _("Cycle dynamic layouts backward"),
         _("Cycle backward through available dynamic layouts of the same size"),
+        false,
+        false
+      ],
+      [
+        Settings.SETTING_RESIZE_DYNAMIC_SPLIT_LEFT,
+        _("Move dynamic split boundary left"),
+        _("Adjust and save the focused window's nearest vertical split"),
+        false,
+        false
+      ],
+      [
+        Settings.SETTING_RESIZE_DYNAMIC_SPLIT_RIGHT,
+        _("Move dynamic split boundary right"),
+        _("Adjust and save the focused window's nearest vertical split"),
+        false,
+        false
+      ],
+      [
+        Settings.SETTING_RESIZE_DYNAMIC_SPLIT_UP,
+        _("Move dynamic split boundary up"),
+        _("Adjust and save the focused window's nearest horizontal split"),
+        false,
+        false
+      ],
+      [
+        Settings.SETTING_RESIZE_DYNAMIC_SPLIT_DOWN,
+        _("Move dynamic split boundary down"),
+        _("Adjust and save the focused window's nearest horizontal split"),
         false,
         false
       ],
@@ -1653,6 +1713,116 @@ class TilingShellExtensionPreferences extends ExtensionPreferences {
       rebuildChips();
     });
 
+    return expanderRow;
+  }
+
+  _buildDynamicAppRulesRow() {
+    const expanderRow = new Adw.ExpanderRow({
+      title: _("Per-application dynamic rules"),
+      subtitle: _("Set tiling, floating, or maximize behavior and optional monitor/workspace targets")
+    });
+    const rulesBox = new Gtk.Box({
+      orientation: Gtk.Orientation.VERTICAL,
+      spacing: 4,
+      margin_top: 4,
+      margin_bottom: 4
+    });
+    const rulesRow = new Adw.ActionRow({activatable: false});
+    rulesRow.set_child(rulesBox);
+    expanderRow.add_row(rulesRow);
+    const rebuild = () => {
+      let child = rulesBox.get_first_child();
+      while (child) {
+        const next = child.get_next_sibling();
+        rulesBox.remove(child);
+        child = next;
+      }
+      for (const rule of Settings.DYNAMIC_APP_RULES) {
+        const action = rule.action === "float" ? _("Float") : rule.action === "maximize" ? _("Maximize") : _("Tile");
+        const target = [
+          rule.monitor >= 0 ? _("Monitor {index}").replace("{index}", String(rule.monitor + 1)) : _("Any monitor"),
+          rule.workspace >= 0 ? _("Workspace {index}").replace("{index}", String(rule.workspace + 1)) : _("Any workspace"),
+          rule.action === "tile" ? (rule.placement === "largest" ? _("Split largest tile") : _("Split focused window")) : ""
+        ].filter(Boolean).join(" · ");
+        const row = new Adw.ActionRow({title: rule.appId, subtitle: `${action} · ${target}`});
+        const remove = new Gtk.Button({icon_name: "list-remove-symbolic", has_frame: false});
+        remove.add_css_class("circular");
+        remove.set_tooltip_text(_("Remove rule"));
+        remove.connect("clicked", () => {
+          Settings.DYNAMIC_APP_RULES = Settings.DYNAMIC_APP_RULES.filter((item) => item.appId !== rule.appId);
+        });
+        row.add_suffix(remove);
+        rulesBox.append(row);
+      }
+    };
+    const addButton = new Gtk.Button({label: _("Add application rule…"), halign: Gtk.Align.CENTER});
+    addButton.add_css_class("suggested-action");
+    addButton.connect("clicked", () => {
+      const dialog = new Adw.Window({
+        modal: true,
+        hide_on_close: true,
+        transient_for: addButton.get_root(),
+        width_request: 460,
+        height_request: 420
+      });
+      const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 10,
+        margin_top: 20, margin_bottom: 20, margin_start: 20, margin_end: 20});
+      const appId = new Gtk.Entry({placeholder_text: _("e.g. org.gnome.Nautilus")});
+      const installedApps = Gio.AppInfo.get_all()
+        .filter((app) => {
+          try { return app.get_id?.() && app.should_show?.() !== false; } catch { return false; }
+        })
+        .sort((a, b) => a.get_display_name().localeCompare(b.get_display_name()));
+      const appModel = new Gtk.StringList();
+      appModel.append(_("Choose an installed application…"));
+      installedApps.forEach((app) => appModel.append(app.get_display_name()));
+      const appPicker = new Gtk.DropDown({model: appModel, selected: 0});
+      appPicker.connect("notify::selected", () => {
+        const selected = appPicker.selected - 1;
+        if (selected < 0 || selected >= installedApps.length) return;
+        const id = installedApps[selected].get_id().replace(/\.desktop$/i, "");
+        appId.set_text(id);
+      });
+      const actionModel = new Gtk.StringList();
+      actionModel.append(_("Tile")); actionModel.append(_("Float")); actionModel.append(_("Maximize"));
+      const action = new Adw.ComboRow({title: _("Action"), model: actionModel});
+      const placementModel = new Gtk.StringList();
+      placementModel.append(_("Split focused window")); placementModel.append(_("Split largest tile"));
+      const placement = new Adw.ComboRow({title: _("New tile placement"), model: placementModel});
+      const monitor = Gtk.SpinButton.new_with_range(-1, 15, 1);
+      monitor.value = -1;
+      const monitorRow = new Adw.ActionRow({title: _("Monitor index (-1 for any)")});
+      monitorRow.add_suffix(monitor);
+      const workspace = Gtk.SpinButton.new_with_range(-1, 64, 1);
+      workspace.value = -1;
+      const workspaceRow = new Adw.ActionRow({title: _("Workspace index (-1 for any)")});
+      workspaceRow.add_suffix(workspace);
+      const buttons = new Gtk.Box({orientation: Gtk.Orientation.HORIZONTAL, spacing: 8, halign: Gtk.Align.END});
+      const cancel = new Gtk.Button({label: _("Cancel")});
+      const save = new Gtk.Button({label: _("Add"), css_classes: ["suggested-action"]});
+      cancel.connect("clicked", () => dialog.destroy());
+      save.connect("clicked", () => {
+        const id = appId.get_text().trim();
+        if (!id) return;
+        const actions = ["tile", "float", "maximize"];
+        const placements = ["focused", "largest"];
+        const next = Settings.DYNAMIC_APP_RULES.filter((item) => item.appId.toLowerCase() !== id.toLowerCase());
+        next.push({appId: id, action: actions[action.selected] ?? "tile",
+          placement: placements[placement.selected] ?? "focused",
+          monitor: Math.round(monitor.value), workspace: Math.round(workspace.value)});
+        Settings.DYNAMIC_APP_RULES = next;
+        dialog.destroy();
+      });
+      buttons.append(cancel); buttons.append(save);
+      box.append(appPicker); box.append(appId); box.append(action); box.append(placement);
+      box.append(monitorRow); box.append(workspaceRow); box.append(buttons);
+      dialog.set_content(box); dialog.present(); appId.grab_focus();
+    });
+    const addRow = new Adw.ActionRow({activatable: false});
+    addRow.set_child(addButton);
+    expanderRow.add_row(addRow);
+    rebuild();
+    this._connectSetting(Settings.gioSetting, `changed::${Settings.KEY_DYNAMIC_APP_RULES}`, rebuild);
     return expanderRow;
   }
 

@@ -44,21 +44,29 @@ class WindowPlacer {
     if (!target.isAlive()) return "skipped-dead";
     const hist = this._historyOf(target);
     const frame = target.getFrameRect();
-    if (hist.pending && rectEquals(hist.pending.dest, dest))
-      return "coalesced";
-    if (hist.lastRequested === void 0 || !rectEquals(hist.lastRequested, dest)) {
+    const supersedesPending = !!hist.pending && !rectEquals(hist.pending.dest, dest);
+    if (hist.pending && rectEquals(hist.pending.dest, dest)) return "coalesced";
+    const isNewDestination = !hist.desired || !rectEquals(hist.desired, dest);
+    if (isNewDestination) {
+      hist.generation = (hist.generation ?? 0) + 1;
+      hist.desired = copyRect(dest);
       this._cancelVerification(hist);
       hist.retries = 0;
       // A new destination is a new placement: the drift budget is reset.
       hist.driftRetries = 0;
     }
-    if (rectEquals(frame, dest) && !hist.pending) {
+    // A different pending request may already have been sent to Mutter even
+    // when the current frame still matches the newly requested rectangle.
+    // Re-send that rectangle so the most recent configure request wins, then
+    // keep a short full-frame watch for a late response from the old request.
+    if (hist.pending) this._cancelPending(hist);
+    if (rectEquals(frame, dest) && !supersedesPending) {
       hist.lastRequested = copyRect(dest);
       hist.settledFrame = copyRect(frame);
       return "skipped-identical";
     }
     const sameAsLast = hist.lastRequested !== void 0 && rectEquals(hist.lastRequested, dest) && hist.settledFrame !== void 0;
-    if (sameAsLast && rectEquals(frame, hist.settledFrame)) {
+    if (sameAsLast && rectEquals(frame, hist.settledFrame) && !supersedesPending) {
       return "skipped-settled";
     }
     const userOp = options.userOp ?? false;
@@ -80,7 +88,10 @@ class WindowPlacer {
       frame,
       options,
       userOp,
-      sameAsLast
+      sameAsLast,
+      false,
+      false,
+      supersedesPending
     );
     return "requested";
   }
@@ -100,7 +111,7 @@ class WindowPlacer {
     for (const target of [...this._inFlight]) this.forget(target);
   }
 
-  _request(target, hist, dest, request, before, options, userOp, nudge = false, fromDrift = false, sizeOnly = false) {
+  _request(target, hist, dest, request, before, options, userOp, nudge = false, fromDrift = false, sizeOnly = false, watchFullRect = false) {
     const earlierBefore = hist.pending?.before;
     if (hist.pending) this._cancelPending(hist);
     this._cancelVerification(hist);
@@ -109,6 +120,7 @@ class WindowPlacer {
     hist.lastOptions = options;
     const pending = {
       dest: copyRect(dest),
+      generation: hist.generation,
       before: copyRect(earlierBefore ?? before),
       animate,
       fromDrift,
@@ -123,6 +135,7 @@ class WindowPlacer {
       // watching it would cost a timer and two signal handlers per
       // window for three seconds without a request to defend.
       watchDrift: nudge || !sizeEquals(before, request),
+      watchFullRect,
       disconnectGeometry: () => {
       },
       disconnectGone: () => {
@@ -191,6 +204,7 @@ class WindowPlacer {
   }
 
   _settle(target, hist, pending) {
+    if (hist.pending !== pending || pending.generation !== hist.generation) return;
     this._cancelPending(hist);
     this._inFlight.delete(target);
     if (!target.isAlive()) return;
@@ -219,7 +233,15 @@ class WindowPlacer {
     }
     const final = sizeEquals(frame, pending.dest) || !pending.fromDrift && hist.retries >= this._opts.retryDelaysMs.length;
     pending.onSettled?.(copyRect(pending.dest), copyRect(frame), final);
-    this._verify(target, hist, pending.dest, frame, pending.watchDrift);
+    this._verify(
+      target,
+      hist,
+      pending.dest,
+      frame,
+      pending.watchDrift,
+      pending.generation,
+      pending.watchFullRect
+    );
   }
 
   /**
@@ -227,7 +249,7 @@ class WindowPlacer {
    * for, ask again a little later (bounded); once it has, keep an eye on it
    * for a while in case it changes its mind on its own.
    */
-  _verify(target, hist, dest, frame, watchDrift = true) {
+  _verify(target, hist, dest, frame, watchDrift = true, generation = hist.generation, watchFullRect = false) {
     const delays = this._opts.retryDelaysMs;
     if (!sizeEquals(frame, dest)) {
       if (hist.retries >= delays.length) return;
@@ -236,7 +258,7 @@ class WindowPlacer {
       hist.retryTimeout = this._clock.timeout(delay, () => {
         hist.retryTimeout = null;
         this._inFlight.delete(target);
-        if (hist.pending || !target.isAlive()) return;
+        if (hist.pending || !target.isAlive() || hist.generation !== generation) return;
         this._request(
           target,
           hist,
@@ -245,7 +267,10 @@ class WindowPlacer {
           target.getFrameRect(),
           hist.lastOptions ?? {},
           hist.lastOptions?.userOp ?? false,
-          true
+          true,
+          false,
+          false,
+          watchFullRect
         );
       });
       return;
@@ -253,6 +278,7 @@ class WindowPlacer {
     if (!watchDrift) return;
     if (this._opts.driftWatchMs <= 0) return;
     const watch = {
+      generation,
       disconnect: () => {
       },
       timeout: null,
@@ -266,7 +292,7 @@ class WindowPlacer {
       this._inFlight.delete(target);
     };
     watch.disconnect = target.onGeometryChanged((change) => {
-      if (hist.watch !== watch || hist.pending) return;
+      if (hist.watch !== watch || hist.pending || hist.generation !== generation) return;
       if (target.isUserMaximized?.()) {
         stop();
         return;
@@ -284,14 +310,15 @@ class WindowPlacer {
       // and a position change cannot alter a window's size. Position
       // changes are reported at pointer rate during a drag, and reading
       // the frame rect back from mutter for each of them is pure waste.
-      if (change === "position") return;
-      if (sizeEquals(target.getFrameRect(), frame)) return;
+      if (!watchFullRect && change === "position") return;
+      const current = target.getFrameRect();
+      if (watchFullRect ? rectEquals(current, dest) : sizeEquals(current, frame)) return;
       if (watch.quiet !== null) this._clock.cancel(watch.quiet);
       watch.quiet = this._clock.timeout(this._opts.quietMs, () => {
 
         watch.quiet = null;
         stop();
-        if (!target.isAlive() || target.isUserMaximized?.()) return;
+        if (!target.isAlive() || target.isUserMaximized?.() || hist.generation !== generation) return;
         // The drift-triggered re-request used to *reset* the retry counter
         // to `delays.length` instead of consuming one retry. Because the
         // counter was then read as "no retries left" by the `final` check,
@@ -314,7 +341,9 @@ class WindowPlacer {
           hist.lastOptions ?? {},
           hist.lastOptions?.userOp ?? false,
           true,
-          true
+          true,
+          false,
+          watchFullRect
         );
       });
     });
@@ -351,7 +380,7 @@ class WindowPlacer {
   _historyOf(target) {
     let hist = this._history.get(target);
     if (!hist) {
-      hist = { retries: 0, retryTimeout: null };
+      hist = { retries: 0, retryTimeout: null, generation: 0 };
       this._history.set(target, hist);
     }
     return hist;

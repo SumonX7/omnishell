@@ -178,11 +178,13 @@ class ManageWindow {
 
 class EmulateX11WindowType {
   _windowList;
+  _pendingWindowSignals;
   _waylandClient;
   _monitorData;
   onWindowAdopted;
   constructor() {
     this._windowList = [];
+    this._pendingWindowSignals = new Map();
     this._waylandClient = null;
     this._monitorData = [];
     this.onWindowAdopted = null;
@@ -240,6 +242,7 @@ class EmulateX11WindowType {
           this.addWindow(window);
           return;
         }
+        if (this._pendingWindowSignals.has(window)) return;
         // Under Wayland, client window properties like title and app ID
         // may be committed a few milliseconds after window creation.
         let titleId = 0;
@@ -258,6 +261,7 @@ class EmulateX11WindowType {
             try { window.disconnect(unmanagedId); } catch {}
             unmanagedId = 0;
           }
+          this._pendingWindowSignals.delete(window);
         };
         const check = () => {
           if (this._isDingWindow(window)) {
@@ -268,6 +272,7 @@ class EmulateX11WindowType {
         titleId = window.connect("notify::title", check);
         appId = window.connect("notify::gtk-application-id", check);
         unmanagedId = window.connect("unmanaged", cleanup);
+        this._pendingWindowSignals.set(window, cleanup);
       },
       this
     );
@@ -282,6 +287,8 @@ class EmulateX11WindowType {
   }
 
   disable() {
+    for (const cleanup of this._pendingWindowSignals.values()) cleanup();
+    this._pendingWindowSignals.clear();
     for (const window of this._windowList) {
       this._clearWindow(window);
     }

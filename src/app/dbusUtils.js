@@ -719,17 +719,20 @@ class RemoteFileOperationsManager extends DbusOperationsManager {
                 'timestamp': Gdk.CURRENT_TIME,
             };
             const parentWindow = eventParameters.parentWindow;
-            const topLevel = parentWindow.get_surface();
+            const topLevel = parentWindow?.get_surface?.() ?? null;
             const windowPosition = 'center';
             const timestamp = eventParameters.timestamp;
             let parentHandle = '';
+            let exportedHandle = false;
 
-            if (parentWindow) {
+            if (parentWindow && topLevel) {
                 try {
-                    if (topLevel.constructor.$gtype === GdkWayland.WaylandToplevel.$gtype) {
+                    if (topLevel.constructor?.$gtype === GdkWayland.WaylandToplevel.$gtype) {
                         const handle = await this.getWaylandParentHandle(topLevel);
-                        if (handle)
+                        if (handle) {
                             parentHandle = `wayland:${handle}`;
+                            exportedHandle = true;
+                        }
                     }
                 } catch (e) {
                     console.error(e, 'Impossible to determine the parent window');
@@ -743,161 +746,86 @@ class RemoteFileOperationsManager extends DbusOperationsManager {
                     'window-position': new GLib.Variant('s', windowPosition),
                 },
                 freePlatformData: () => {
-                    topLevel.unexport_handle();
+                    if (exportedHandle) topLevel.unexport_handle();
                 },
             };
         };
     }
 
+    get isAvailable() {
+        return Boolean(this.fileOperationsManager?.isAvailable);
+    }
 
-    MoveURIsRemote(fileList, uri, callback) {
-        if (!this.fileOperationsManager.proxy) {
+    async _invokeWithPlatformData(method, args, callback, errorLabel) {
+        if (!this.fileOperationsManager.isAvailable) {
             this._sendNoProxyError(callback);
             return;
         }
-        this.fileOperationsManager.proxy.MoveURIsRemote(
-            fileList,
-            uri,
-            this.platformData(),
-            (result, error) => {
-                if (callback)
-                    callback(result, error);
-
-                if (error)
-                    console.log(`Error moving files: ${error.message}`);
+        let platform = null;
+        let completed = false;
+        const release = () => {
+            try { platform?.freePlatformData?.(); } catch (e) {
+                console.error(e, 'Failed to release file operation platform data');
             }
-        );
+            platform = null;
+        };
+        const done = (result, error) => {
+            if (completed) return;
+            completed = true;
+            release();
+            if (callback) callback(result, error);
+            if (error) console.log(`Error ${errorLabel}: ${error.message}`);
+        };
+        try {
+            platform = await this.platformData();
+            const proxy = this.fileOperationsManager.proxy;
+            if (!proxy) {
+                done(null, new Error('File operations service is unavailable'));
+                return;
+            }
+            proxy[method](...args, platform.data, done);
+        } catch (error) {
+            done(null, error);
+        }
+    }
+
+
+    MoveURIsRemote(fileList, uri, callback) {
+        return this._invokeWithPlatformData('MoveURIsRemote', [fileList, uri], callback, 'moving files');
     }
 
     CopyURIsRemote(fileList, uri, callback) {
-        if (!this.fileOperationsManager.proxy) {
-            this._sendNoProxyError(callback);
-            return;
-        }
-        this.fileOperationsManager.proxy.CopyURIsRemote(
-            fileList,
-            uri,
-            this.platformData(),
-            (result, error) => {
-                if (callback)
-                    callback(result, error);
-
-                if (error)
-                    console.log(`Error copying files: ${error.message}`);
-            }
-        );
+        return this._invokeWithPlatformData('CopyURIsRemote', [fileList, uri], callback, 'copying files');
     }
 
     async RenameURIRemote(fileList, uri, callback) {
-        if (!this.fileOperationsManager.proxy) {
-            this._sendNoProxyError(callback);
-            return;
-        }
-        const platformData = await this.platformData().data;
-        this.fileOperationsManager.proxy.RenameURIRemote(
-            fileList,
-            uri,
-            platformData,
-            (result, error) => {
-                if (callback)
-                    callback(result, error);
-
-                if (error)
-                    console.log(`Error copying files: ${error.message}`);
-            }
-        );
+        return this._invokeWithPlatformData('RenameURIRemote', [fileList, uri], callback, 'renaming files');
     }
 
     TrashURIsRemote(fileList, callback) {
-        if (!this.fileOperationsManager.proxy) {
-            this._sendNoProxyError(callback);
-            return;
-        }
-        this.fileOperationsManager.proxy.TrashURIsRemote(
-            fileList,
-            this.platformData(),
-            (result, error) => {
-                if (callback)
-                    callback(result, error);
-
-                if (error)
-                    console.log(`Error moving files: ${error.message}`);
-            }
-        );
+        return this._invokeWithPlatformData('TrashURIsRemote', [fileList], callback, 'moving files to trash');
     }
 
     DeleteURIsRemote(fileList, callback) {
-        if (!this.fileOperationsManager.proxy) {
-            this._sendNoProxyError(callback);
-            return;
-        }
-        this.fileOperationsManager.proxy.DeleteURIsRemote(
-            fileList,
-            this.platformData(),
-            (source, error) => {
-                if (callback)
-                    callback(source, error);
-
-                if (error)
-                    console.log(`Error deleting files on the desktop: ${error.message}`);
-            }
-        );
+        return this._invokeWithPlatformData('DeleteURIsRemote', [fileList], callback, 'deleting files');
     }
 
     EmptyTrashRemote(askConfirmation, callback) {
-        if (!this.fileOperationsManager.proxy) {
-            this._sendNoProxyError(callback);
-            return;
-        }
-        this.fileOperationsManager.proxy.EmptyTrashRemote(
-            askConfirmation,
-            this.platformData(),
-            (source, error) => {
-                if (callback)
-                    callback(source, error);
-
-                if (error)
-                    console.log(`Error trashing files on the desktop: ${error.message}`);
-            }
-        );
+        return this._invokeWithPlatformData('EmptyTrashRemote', [askConfirmation], callback, 'emptying trash');
     }
 
     UndoRemote(callback) {
-        if (!this.fileOperationsManager.proxy) {
-            this._sendNoProxyError(callback);
-            return;
-        }
-        this.fileOperationsManager.proxy.UndoRemote(
-            this.platformData(),
-            (result, error) => {
-                if (callback)
-                    callback(result, error);
-
-                if (error)
-                    console.log(`Error performing undo: ${error.message}`);
-            }
-        );
+        return this._invokeWithPlatformData('UndoRemote', [], callback, 'performing undo');
     }
 
     RedoRemote(callback) {
-        if (!this.fileOperationsManager.proxy) {
-            this._sendNoProxyError(callback);
-            return;
-        }
-        this.fileOperationsManager.proxy.RedoRemote(
-            this.platformData(),
-            (result, error) => {
-                if (callback)
-                    callback(result, error);
-
-                if (error)
-                    console.log(`Error performing redo: ${error.message}`);
-            }
-        );
+        return this._invokeWithPlatformData('RedoRemote', [], callback, 'performing redo');
     }
 
     UndoStatus() {
-        return this.fileOperationsManager.proxy.UndoStatus;
+        return this.fileOperationsManager.isAvailable
+            ? this.fileOperationsManager.proxy.UndoStatus
+            : 0;
     }
 }
 
@@ -906,6 +834,10 @@ class LegacyRemoteFileOperationsManager extends DbusOperationsManager {
     constructor(fileOperationsManager, freeDesktopFileManager, gnomeNautilusPreview, gnomeArchiveManager) {
         super(freeDesktopFileManager, gnomeNautilusPreview, gnomeArchiveManager);
         this.fileOperationsManager = fileOperationsManager;
+    }
+
+    get isAvailable() {
+        return Boolean(this.fileOperationsManager?.isAvailable);
     }
 
     MoveURIsRemote(fileList, uri, callback) {

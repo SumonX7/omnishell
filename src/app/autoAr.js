@@ -463,8 +463,15 @@ const progressDialog = class {
             const retval = await this._waitButtons();
             this._buttonPromiseAccept = null;
             this._waitingForPassword = false;
-            if (retval)
+            if (retval) {
                 await this.doExtractFile(fullPath, folder, folderName);
+            } else {
+                await this._cleanupFile(folder, this._cancellable);
+                this._autoAr.notify(_('Extraction cancelled'),
+                    _("Extracting '{fullPathFile}' has been cancelled by the user.").replace(
+                        '{fullPathFile}', Gio.File.new_for_path(fullPath).get_basename()));
+                this._destroy();
+            }
         }
     }
 

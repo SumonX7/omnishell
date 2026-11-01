@@ -138,7 +138,11 @@ const _EdgeTilingManager = class _EdgeTilingManager extends GObject.Object {
   startEdgeTiling(pointerPos) {
     const { x, y } = clampPointInsideRect(pointerPos, this._workArea);
     const previewRect = buildRectangle();
-    if (this._activeEdgeTile && isPointInsideRect({ x, y }, this._activeEdgeTile)) {
+    // In granular mode the active zone only identifies the broad edge band.
+    // The exact destination can change within that band as the pointer moves
+    // across rows or columns, so recalculate it on each drag update.
+    const granular = Settings.EDGE_TILING_MODE === EdgeTilingMode.GRANULAR;
+    if (!granular && this._activeEdgeTile && isPointInsideRect({ x, y }, this._activeEdgeTile)) {
       return {
         changed: false,
         rect: previewRect

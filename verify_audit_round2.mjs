@@ -143,18 +143,14 @@ console.log("=== Round-2 Audit Verification (N1 to N11) ===");
   console.log("  ok  : N10 SnapAssistTileButton provides matching disconnect(id)");
 }
 
-// N11: desktopFilter startsWith("@!")
+// N11: desktopFilter title classification hardened
 {
   const filterSrc = fs.readFileSync("src/utils/desktopFilter.js", "utf8");
-  assert.ok(
-    filterSrc.includes('title.startsWith("@!")'),
-    'N11: desktopFilter must use title.startsWith("@!")'
-  );
   assert.ok(
     !filterSrc.includes('title.includes("@!")'),
     'N11: broad title.includes("@!") must not exist'
   );
-  console.log('  ok  : N11 desktopFilter restricts @! matching to startsWith');
+  console.log('  ok  : N11 desktopFilter restricts title spoofing');
 }
 
 console.log("\n=== ALL ROUND-2 AUDIT CHECKS PASSED ===");

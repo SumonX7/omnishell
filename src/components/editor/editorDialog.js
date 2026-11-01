@@ -168,6 +168,15 @@ const _EditorDialog = class _EditorDialog extends ModalDialog.ModalDialog {
         xExpand: false
       })
     );
+    const suggestion5 = new St.BoxLayout({ xExpand: true });
+    suggestion5.add_child(
+      new St.Label({
+        text: _("CTRL+Z to undo; CTRL+SHIFT+Z to redo."),
+        xAlign: Clutter.ActorAlign.CENTER,
+        yAlign: Clutter.ActorAlign.CENTER,
+        xExpand: true
+      })
+    );
     const legend = new St.BoxLayout({
       styleClass: "legend",
       ...widgetOrientation(true)
@@ -176,6 +185,7 @@ const _EditorDialog = class _EditorDialog extends ModalDialog.ModalDialog {
     legend.add_child(suggestion2);
     legend.add_child(suggestion3);
     legend.add_child(suggestion4);
+    legend.add_child(suggestion5);
     this.contentLayout.destroy_all_children();
     this.contentLayout.add_child(
       new St.Label({

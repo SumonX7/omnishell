@@ -140,6 +140,10 @@ class DefaultMenu {
   _scalingFactor;
   _children;
   _openPrefsFn;
+  _refreshTilingItem;
+  _diagnosticsItem;
+  _refreshFeedbackSourceId = 0;
+  _diagnosticsFeedbackSourceId = 0;
   constructor(indicator, enableScalingFactor, openPrefsFn) {
     this._indicator = indicator;
     this._signals = new SignalHandling();
@@ -168,6 +172,7 @@ class DefaultMenu {
     const refreshTilingItem = new PopupMenu.PopupMenuItem(
       _("Refresh dynamic tiling")
     );
+    this._refreshTilingItem = refreshTilingItem;
     this._signals.connect(
       Settings,
       Settings.KEY_ENABLE_DYNAMIC_TILING,
@@ -175,10 +180,39 @@ class DefaultMenu {
     );
     refreshTilingItem.setSensitive(Settings.ENABLE_DYNAMIC_TILING);
     refreshTilingItem.connect("activate", () => {
-      this._indicator.refreshDynamicTiling();
+      const refreshed = this._indicator.refreshDynamicTiling();
+      refreshTilingItem.label.set_text(refreshed ? _("Reconciliation queued") : _("Refresh unavailable"));
+      if (this._refreshFeedbackSourceId) GLib.Source.remove(this._refreshFeedbackSourceId);
+      this._refreshFeedbackSourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1800, () => {
+        this._refreshFeedbackSourceId = 0;
+        if (this._refreshTilingItem)
+          this._refreshTilingItem.label.set_text(_("Refresh dynamic tiling"));
+        return GLib.SOURCE_REMOVE;
+      });
     });
     this._children.push(refreshTilingItem);
     this._indicator.menu.addMenuItem(refreshTilingItem);
+    const diagnosticsItem = new PopupMenu.PopupMenuItem(_("Copy dynamic tiling diagnostics"));
+    this._diagnosticsItem = diagnosticsItem;
+    diagnosticsItem.connect("activate", () => {
+      try {
+        const data = JSON.stringify(this._indicator.getDynamicTilingDiagnostics(), null, 2);
+        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, data);
+        diagnosticsItem.label.set_text(_("Diagnostics copied"));
+      } catch (error) {
+        debug(`Could not copy diagnostics: ${error.message}`);
+        diagnosticsItem.label.set_text(_("Could not copy diagnostics"));
+      }
+      if (this._diagnosticsFeedbackSourceId) GLib.Source.remove(this._diagnosticsFeedbackSourceId);
+      this._diagnosticsFeedbackSourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1800, () => {
+        this._diagnosticsFeedbackSourceId = 0;
+        if (this._diagnosticsItem)
+          this._diagnosticsItem.label.set_text(_("Copy dynamic tiling diagnostics"));
+        return GLib.SOURCE_REMOVE;
+      });
+    });
+    this._children.push(diagnosticsItem);
+    this._indicator.menu.addMenuItem(diagnosticsItem);
     const layoutsPopupMenu = new PopupMenu.PopupBaseMenuItem({
       style_class: "indicator-menu-item"
     });
@@ -490,6 +524,16 @@ class DefaultMenu {
   }
 
   destroy() {
+    if (this._refreshFeedbackSourceId) {
+      GLib.Source.remove(this._refreshFeedbackSourceId);
+      this._refreshFeedbackSourceId = 0;
+    }
+    if (this._diagnosticsFeedbackSourceId) {
+      GLib.Source.remove(this._diagnosticsFeedbackSourceId);
+      this._diagnosticsFeedbackSourceId = 0;
+    }
+    this._refreshTilingItem = null;
+    this._diagnosticsItem = null;
     if (this._refreshSourceId !== null) {
       GLib.Source.remove(this._refreshSourceId);
       this._refreshSourceId = null;

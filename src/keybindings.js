@@ -245,6 +245,20 @@ const _KeyBindings = class _KeyBindings extends GObject.Object {
         this.emit("move-window-to-workspace", display, "prev");
       }
     );
+    for (const [setting, direction] of [
+      [Settings.SETTING_RESIZE_DYNAMIC_SPLIT_LEFT, "left"],
+      [Settings.SETTING_RESIZE_DYNAMIC_SPLIT_RIGHT, "right"],
+      [Settings.SETTING_RESIZE_DYNAMIC_SPLIT_UP, "up"],
+      [Settings.SETTING_RESIZE_DYNAMIC_SPLIT_DOWN, "down"]
+    ]) {
+      Main.wm.addKeybinding(
+        setting,
+        extensionSettings,
+        Meta.KeyBindingFlags.NONE,
+        Shell.ActionMode.NORMAL,
+        (display) => this.emit("resize-dynamic-split", display, direction)
+      );
+    }
   }
 
   _onCycleLayouts(display, event, binding, action) {
@@ -342,6 +356,10 @@ const _KeyBindings = class _KeyBindings extends GObject.Object {
     Main.wm.removeKeybinding(Settings.SETTING_CYCLE_DYNAMIC_LAYOUT_BACKWARD);
     Main.wm.removeKeybinding(Settings.SETTING_MOVE_WINDOW_TO_NEXT_WORKSPACE);
     Main.wm.removeKeybinding(Settings.SETTING_MOVE_WINDOW_TO_PREV_WORKSPACE);
+    Main.wm.removeKeybinding(Settings.SETTING_RESIZE_DYNAMIC_SPLIT_LEFT);
+    Main.wm.removeKeybinding(Settings.SETTING_RESIZE_DYNAMIC_SPLIT_RIGHT);
+    Main.wm.removeKeybinding(Settings.SETTING_RESIZE_DYNAMIC_SPLIT_UP);
+    Main.wm.removeKeybinding(Settings.SETTING_RESIZE_DYNAMIC_SPLIT_DOWN);
   }
 
   _restoreNatives() {
@@ -418,6 +436,10 @@ registerGObjectClass(_KeyBindings, {
     "move-window-to-workspace": {
       param_types: [Meta.Display.$gtype, GObject.TYPE_STRING]
       // Meta.Display, direction ("next" or "prev")
+    },
+    "resize-dynamic-split": {
+      param_types: [Meta.Display.$gtype, GObject.TYPE_STRING]
+      // Meta.Display, direction (left/right/up/down)
     }
   }
 });

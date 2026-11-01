@@ -122,6 +122,10 @@ class Settings {
   static KEY_DYNAMIC_PLACEMENT_POLICY = "dynamic-placement-policy";
   static KEY_MAX_DYNAMIC_WINDOWS_PER_MONITOR = "max-dynamic-windows-per-monitor";
   static KEY_DYNAMIC_TILING_ANIMATION_TIME = "dynamic-tiling-animation-time";
+  static KEY_DYNAMIC_STRICT_INITIAL_PLACEMENT = "dynamic-strict-initial-placement";
+  static KEY_DYNAMIC_OVERFLOW_POLICY = "dynamic-overflow-policy";
+  static KEY_DYNAMIC_APP_RULES = "dynamic-app-rules";
+  static KEY_DYNAMIC_SPLIT_RATIOS = "dynamic-split-ratios";
   static KEY_RAISE_TOGETHER = "raise-together";
   static KEY_ACTIVE_SCREEN_EDGES = "active-screen-edges";
   static KEY_TOP_EDGE_MAXIMIZE = "top-edge-maximize";
@@ -171,6 +175,10 @@ class Settings {
   static SETTING_CYCLE_DYNAMIC_LAYOUT_BACKWARD = "cycle-dynamic-layout-backward";
   static SETTING_MOVE_WINDOW_TO_NEXT_WORKSPACE = "move-window-to-next-workspace";
   static SETTING_MOVE_WINDOW_TO_PREV_WORKSPACE = "move-window-to-prev-workspace";
+  static SETTING_RESIZE_DYNAMIC_SPLIT_LEFT = "resize-dynamic-split-left";
+  static SETTING_RESIZE_DYNAMIC_SPLIT_RIGHT = "resize-dynamic-split-right";
+  static SETTING_RESIZE_DYNAMIC_SPLIT_UP = "resize-dynamic-split-up";
+  static SETTING_RESIZE_DYNAMIC_SPLIT_DOWN = "resize-dynamic-split-down";
   static initialize(settings) {
     if (this._is_initialized) return;
     this._is_initialized = true;
@@ -427,6 +435,67 @@ class Settings {
 
   static set DYNAMIC_TILING_ANIMATION_TIME(val) {
     set_unsigned_number(Settings.KEY_DYNAMIC_TILING_ANIMATION_TIME, val);
+  }
+
+  static get DYNAMIC_STRICT_INITIAL_PLACEMENT() {
+    return get_boolean(Settings.KEY_DYNAMIC_STRICT_INITIAL_PLACEMENT);
+  }
+
+  static set DYNAMIC_STRICT_INITIAL_PLACEMENT(val) {
+    set_boolean(Settings.KEY_DYNAMIC_STRICT_INITIAL_PLACEMENT, val);
+  }
+
+  static get DYNAMIC_OVERFLOW_POLICY() {
+    return get_string(Settings.KEY_DYNAMIC_OVERFLOW_POLICY) === "next-workspace"
+      ? "next-workspace" : "float";
+  }
+
+  static set DYNAMIC_OVERFLOW_POLICY(val) {
+    set_string(Settings.KEY_DYNAMIC_OVERFLOW_POLICY,
+      val === "next-workspace" ? "next-workspace" : "float");
+  }
+
+  static get DYNAMIC_APP_RULES() {
+    try {
+      const parsed = JSON.parse(get_string(Settings.KEY_DYNAMIC_APP_RULES) || "[]");
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((rule) => rule && typeof rule.appId === "string" && rule.appId.trim())
+        .map((rule) => ({
+          appId: rule.appId.trim(),
+          action: ["tile", "float", "maximize"].includes(rule.action) ? rule.action : "tile",
+          placement: rule.placement === "largest" ? "largest" : "focused",
+          monitor: Number.isInteger(rule.monitor) && rule.monitor >= 0 ? rule.monitor : -1,
+          workspace: Number.isInteger(rule.workspace) && rule.workspace >= 0 ? rule.workspace : -1
+        }));
+    } catch {
+      return [];
+    }
+  }
+
+  static set DYNAMIC_APP_RULES(rules) {
+    const valid = Array.isArray(rules) ? rules.filter((rule) => rule && typeof rule.appId === "string" && rule.appId.trim())
+      .map((rule) => ({
+        appId: rule.appId.trim(),
+        action: ["tile", "float", "maximize"].includes(rule.action) ? rule.action : "tile",
+        placement: rule.placement === "largest" ? "largest" : "focused",
+        monitor: Number.isInteger(rule.monitor) && rule.monitor >= 0 ? rule.monitor : -1,
+        workspace: Number.isInteger(rule.workspace) && rule.workspace >= 0 ? rule.workspace : -1
+      })) : [];
+    set_string(Settings.KEY_DYNAMIC_APP_RULES, JSON.stringify(valid));
+  }
+
+  static get DYNAMIC_SPLIT_RATIOS() {
+    try {
+      const value = JSON.parse(get_string(Settings.KEY_DYNAMIC_SPLIT_RATIOS) || "{}");
+      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    } catch {
+      return {};
+    }
+  }
+
+  static set DYNAMIC_SPLIT_RATIOS(value) {
+    set_string(Settings.KEY_DYNAMIC_SPLIT_RATIOS,
+      JSON.stringify(value && typeof value === "object" && !Array.isArray(value) ? value : {}));
   }
 
   static get RAISE_TOGETHER() {

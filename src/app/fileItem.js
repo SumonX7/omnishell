@@ -436,8 +436,10 @@ export var FileItem = class extends desktopIconItem.desktopIconItem {
             return;
         }
 
-        if (this._isAppImageFile)
+        if (this._isAppImageFile) {
             this._launchAppImageFile(context, fileList);
+            return;
+        }
 
 
         if (this._isDirectory) {
